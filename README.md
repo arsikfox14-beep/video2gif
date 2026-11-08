@@ -9,16 +9,16 @@
 
 ## Скриншоты
 
-(Версия 2.5 + TT + YOUTUBE И ТП + МУЗЫКА
+**(Версия 2.5 + TT + YOUTUBE И ТП + МУЗЫКА)**
 <img width="967" height="603" alt="изображение" src="https://github.com/user-attachments/assets/4b65cabc-c135-4d55-973c-a39eda8c2220" />
 
-(Версия 2.0 + TikTok)
+**(Версия 2.0 + TikTok)**
 <img width="990" height="620" alt="Jarvis" src="https://github.com/user-attachments/assets/1fefafc7-0939-407d-8c49-283a4217252b" />
 
-(Версия 2.0)
+**(Версия 2.0)**
 <img width="950" height="602" alt="Friday" src="https://github.com/user-attachments/assets/7c5fe19e-5b17-486f-802b-321d1ab136b1" />
 
-(Версия 1.2)
+**(Версия 1.2)**
 <img width="961" height="685" alt="video2gif 1.2" src="https://github.com/user-attachments/assets/5236780c-dbf5-4c52-a29a-dcbc58dc01f6" />
 
 ## Что нового в 2.4
