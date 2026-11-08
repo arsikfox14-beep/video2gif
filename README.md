@@ -4,13 +4,7 @@
 
 **by DeepSeek v4.1 flash & arsikfox14 & dismasdismavich**
 
-Две основные сборки:
-
-- **Jarvis.exe** — с TikTok;
-- **Friday.exe** — без TikTok;
-- **Video2Gif.exe** и **Video2gif_notiktok.exe** — те же версии под старыми именами.
-
-Все сборки версии **2.4**. Установка не нужна: FFmpeg и yt-dlp находятся
+Установка не нужна: FFmpeg и yt-dlp находятся
 внутри exe. Права администратора не требуются.
 
 ## Скриншоты
@@ -53,7 +47,6 @@
 Меню **«Скачать»** в главном окне:
 
 - **TikTok** — видео MP4 без водяного знака и фото-посты
-  (только в Jarvis и Video2Gif, в Friday этого пункта нет).
 - **YouTube и другие сайты** — YouTube, SoundCloud, VK и тысячи других
   сайтов через yt-dlp. На выбор видео MP4 или музыка MP3.
 - **Музыка из Spotify** — ссылка на трек, альбом или плейлист.
@@ -66,8 +59,7 @@
 
 ## Как запустить
 
-1. Скачать `Jarvis.exe`, `Friday.exe`, `Video2Gif.exe` или
-   `Video2gif_notiktok.exe`.
+1. Скачать `Video2Gif.exe`
 2. Двойной клик.
 3. Перетащить видео или картинку в окно.
 
@@ -94,7 +86,7 @@
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-Собирается `Jarvis.exe`.
+Собирается `Video2gif.exe (jarvis)`.
 
 Другие сборки:
 
@@ -104,8 +96,8 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Legacy
 powershell -ExecutionPolicy Bypass -File build.ps1 -Legacy -NoTikTok
 ```
 
-- `-NoTikTok` — Friday.exe без кнопки и кода TikTok;
-- `-Legacy` — старые имена Video2Gif.exe / Video2gif_notiktok.exe.
+- `-NoTikTok` — Старая версия Video2gif.exe (friday) без кнопки и кода TikTok;
+- `-Legacy` — старые имена Video2Gif.exe / Video2gif_notiktok.exe `(по факту нынешний но дипсик не правильно понял)`
 
 Скрипт сжимает FFmpeg и yt-dlp в `build\*.gz`, рисует иконку и собирает exe
 в корне проекта. Файлы `.cs` должны быть в UTF-8 с BOM.
@@ -133,7 +125,7 @@ Jarvis.exe --selftest
 
 ## История версий
 
-- **2.4** — без окна после скачивания; у WAV показан битрейт.
+- **2.4\2.5** — без окна после скачивания; у WAV показан битрейт.
 - **2.3** — надёжное определение пути файла, аккуратный выбор формата,
   Spotify MP3/WAV, сохранение на рабочий стол, поиск трека по длительности.
 - **2.2** — скачивание с YouTube и других сайтов (yt-dlp), музыка из Spotify,
