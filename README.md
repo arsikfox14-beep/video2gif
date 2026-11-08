@@ -9,7 +9,7 @@
 
 ## Скриншоты
 
-(Версия 2.5 beta + TT + YOUTUBE И ТП + МУЗЫКА
+(Версия 2.5 + TT + YOUTUBE И ТП + МУЗЫКА
 <img width="967" height="603" alt="изображение" src="https://github.com/user-attachments/assets/4b65cabc-c135-4d55-973c-a39eda8c2220" />
 
 (Версия 2.0 + TikTok)
