@@ -26,9 +26,7 @@ namespace Video2Gif
         private PillButton convertButton;
         private PillButton cancelButton;
         private PillButton themeButton;
-#if !NOTIKTOK
-        private PillButton tiktokButton;
-#endif
+        private PillButton downloadsButton;
 
         private Panel progressView;
         private Label percentLabel;
@@ -92,22 +90,16 @@ namespace Video2Gif
             Controls.Add(Lbl(Program.AppName, Ui.Logo, Ui.Text, 70, 10, 240, 28));
             Controls.Add(Lbl("видео и картинки → GIF",
                 Ui.Small, Ui.Muted, 71, 36, 300, 18));
-            int versionX = 460;
-#if NOTIKTOK
-            versionX = 568;
-#endif
             Controls.Add(Lbl("v" + Program.Version + " · локально", Ui.Tiny, Ui.Faint,
-                versionX, 24, 240, 18, ContentAlignment.MiddleRight));
+                460, 24, 240, 18, ContentAlignment.MiddleRight));
 
-#if !NOTIKTOK
-            tiktokButton = new PillButton();
-            tiktokButton.Ghost = true;
-            tiktokButton.Font = Ui.Small;
-            tiktokButton.Text = "TikTok";
-            tiktokButton.SetBounds(Ui.P(712), Ui.P(16), Ui.P(104), Ui.P(32));
-            tiktokButton.Click += delegate { OpenTikTok(); };
-            Controls.Add(tiktokButton);
-#endif
+            downloadsButton = new PillButton();
+            downloadsButton.Ghost = true;
+            downloadsButton.Font = Ui.Small;
+            downloadsButton.Text = "Скачать";
+            downloadsButton.SetBounds(Ui.P(712), Ui.P(16), Ui.P(104), Ui.P(32));
+            downloadsButton.Click += delegate { ShowDownloadMenu(); };
+            Controls.Add(downloadsButton);
 
             themeButton = new PillButton();
             themeButton.Ghost = true;
@@ -117,13 +109,8 @@ namespace Video2Gif
             themeButton.Click += delegate { ToggleTheme(); };
             Controls.Add(themeButton);
 
-#if NOTIKTOK
-            Controls.Add(Lbl("by deepseek v4.1 flash & arsikfox14 & dismasdismavich", Ui.Tiny, Ui.Faint,
+            Controls.Add(Lbl("by DeepSeek v4.1 flash & arsikfox14 & dismasdismavich", Ui.Tiny, Ui.Faint,
                 24, 560, 912, 14, ContentAlignment.MiddleRight));
-#else
-            Controls.Add(Lbl("by deepseek v4.1 flash & arsikfox14", Ui.Tiny, Ui.Faint,
-                24, 560, 912, 14, ContentAlignment.MiddleRight));
-#endif
 
             drop = new DropCard();
             drop.SetBounds(Ui.P(24), Ui.P(68), Ui.P(912), Ui.P(92));
@@ -301,6 +288,89 @@ namespace Video2Gif
             resultView.Controls.Add(openButton);
 
             ResumeLayout(false);
+        }
+
+        private void ShowDownloadMenu()
+        {
+            if (busy) return;
+
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.ShowImageMargin = false;
+            menu.ShowCheckMargin = false;
+            menu.Font = Ui.Base;
+            menu.BackColor = Ui.Card;
+            menu.ForeColor = Ui.Text;
+            menu.Renderer = new MenuRenderer();
+
+#if !NOTIKTOK
+            AddMenuItem(menu, "TikTok", delegate { OpenTikTok(); });
+#endif
+            AddMenuItem(menu, "YouTube и другие сайты",
+                delegate { OpenMediaDownload(false); });
+            AddMenuItem(menu, "Музыка из Spotify",
+                delegate { OpenMediaDownload(true); });
+
+            menu.Show(downloadsButton, new Point(0, downloadsButton.Height + Ui.P(4)));
+        }
+
+        private static void AddMenuItem(ContextMenuStrip menu, string text, EventHandler click)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text);
+            item.ForeColor = Ui.Text;
+            item.BackColor = Ui.Card;
+            item.Padding = new Padding(Ui.P(10), Ui.P(5), Ui.P(10), Ui.P(5));
+            item.Click += click;
+            menu.Items.Add(item);
+        }
+
+        private void OpenMediaDownload(bool spotify)
+        {
+            if (busy) return;
+            using (MediaDownloadForm dialog = new MediaDownloadForm(spotify))
+            {
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private sealed class MenuRenderer : ToolStripProfessionalRenderer
+        {
+            public MenuRenderer() : base(new MenuColors()) { }
+
+            protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
+            {
+                using (SolidBrush brush = new SolidBrush(Ui.Card))
+                {
+                    e.Graphics.FillRectangle(brush, e.AffectedBounds);
+                }
+            }
+
+            protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+            {
+                if (!e.Item.Selected) return;
+                using (SolidBrush brush = new SolidBrush(Ui.Track))
+                {
+                    e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, e.Item.Size));
+                }
+            }
+
+            protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+            {
+                e.TextColor = e.Item.Enabled ? Ui.Text : Ui.Faint;
+                base.OnRenderItemText(e);
+            }
+        }
+
+        private sealed class MenuColors : ProfessionalColorTable
+        {
+            public override Color ToolStripDropDownBackground { get { return Ui.Card; } }
+            public override Color MenuBorder { get { return Ui.Border; } }
+            public override Color MenuItemBorder { get { return Ui.Border; } }
+            public override Color MenuItemSelected { get { return Ui.Track; } }
+            public override Color ImageMarginGradientBegin { get { return Ui.Card; } }
+            public override Color ImageMarginGradientMiddle { get { return Ui.Card; } }
+            public override Color ImageMarginGradientEnd { get { return Ui.Card; } }
+            public override Color SeparatorDark { get { return Ui.Border; } }
+            public override Color SeparatorLight { get { return Ui.Border; } }
         }
 
     }

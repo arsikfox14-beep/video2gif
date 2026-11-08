@@ -254,10 +254,21 @@ namespace Video2Gif
     {
         public bool Accent;
         public bool Ghost;
-        public bool Active;
 
+        private bool active;
         private bool hover;
         private bool down;
+
+        public bool Active
+        {
+            get { return active; }
+            set
+            {
+                if (active == value) return;
+                active = value;
+                Invalidate();
+            }
+        }
 
         public PillButton()
         {

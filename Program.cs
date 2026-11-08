@@ -14,8 +14,8 @@ using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyDescription("Jarvis — видео и картинки в GIF, скачивание TikTok без водяного знака")]
 [assembly: System.Reflection.AssemblyProduct("Jarvis")]
 #endif
-[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("2.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("2.4.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("2.4.0.0")]
 
 namespace Video2Gif
 {
@@ -28,7 +28,7 @@ namespace Video2Gif
 #else
         public const string AppName = "Jarvis";
 #endif
-        public const string Version = "2.1";
+        public const string Version = "2.4";
 
         [STAThread]
         private static int Main(string[] args)

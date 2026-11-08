@@ -286,9 +286,7 @@ namespace Video2Gif
             ditherBayer.Enabled = !busy;
             ditherSierra.Enabled = !busy;
             ditherNone.Enabled = !busy;
-#if !NOTIKTOK
-            tiktokButton.Enabled = !busy;
-#endif
+            downloadsButton.Enabled = !busy;
         }
 
         /* ------------------------------------------------------- Конвертация */
@@ -576,7 +574,7 @@ namespace Video2Gif
                 dialog.FileName = SafeName(sourcePath) + ".gif";
                 try
                 {
-                    string dir = sourcePath != null ? Path.GetDirectoryName(sourcePath) : null;
+                    string dir = SavePaths.Desktop();
                     if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) dialog.InitialDirectory = dir;
                 }
                 catch { }

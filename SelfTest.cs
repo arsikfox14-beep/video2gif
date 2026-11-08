@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -37,6 +38,37 @@ namespace Video2Gif
                 int versionCode = RunProcess(ffmpeg, "-hide_banner -version", out versionOut);
                 Check("ffmpeg -version", versionCode == 0 && versionOut.IndexOf("ffmpeg version", StringComparison.OrdinalIgnoreCase) >= 0);
                 Line("  " + FirstLine(versionOut));
+
+                string ytdlp = YtDlpBundle.Path;
+                Line("yt-dlp path: " + ytdlp);
+                Check("yt-dlp file", File.Exists(ytdlp) && new FileInfo(ytdlp).Length > 15L * 1024L * 1024L);
+                string ytVersion;
+                int ytCode = RunProcess(ytdlp, "--version", out ytVersion);
+                Check("yt-dlp version", ytCode == 0 && ytVersion.Trim().Length > 0);
+                Line("  " + FirstLine(ytVersion));
+
+                string spotifyJson = "{\"props\":{\"pageProps\":{\"state\":{\"data\":{\"entity\":{\"type\":\"playlist\",\"trackList\":[" +
+                    "{\"title\":\"Song One\",\"subtitle\":\"Artist A\",\"duration\":1000,\"isPlayable\":true}," +
+                    "{\"title\":\"Song Two\",\"subtitle\":\"Artist B\",\"duration\":2000,\"isPlayable\":false}]}}}}}}";
+                string spotifyHtml = "<script id=\"__NEXT_DATA__\" type=\"application/json\">" +
+                    spotifyJson + "</script>";
+                List<MediaTrack> spotifyTracks = SpotifyLinks.ParseHtml(spotifyHtml);
+                Check("spotify link parse", spotifyTracks.Count == 1 &&
+                    spotifyTracks[0].Title == "Song One" &&
+                    spotifyTracks[0].Query == "Artist A Song One");
+
+                MediaTrack timed = new MediaTrack();
+                timed.DurationMs = 213000;
+                Check("spotify duration filter",
+                    MediaDownloader.DurationFilter(timed) == "duration >= 203 & duration <= 223");
+                Check("spotify duration filter off",
+                    MediaDownloader.DurationFilter(new MediaTrack()) == null);
+                Check("default folder desktop", Directory.Exists(SavePaths.Desktop()));
+
+                string probe = Path.Combine(work, "probe song.mp3");
+                File.WriteAllText(probe, "x");
+                Check("download path resolve",
+                    MediaDownloader.ResolvePath(@"C:\NO-SUCH~1\probe song.mp3", work) == probe);
 
                 string sample = Path.Combine(work, "sample.mp4");
                 string genOut;
@@ -253,6 +285,66 @@ namespace Video2Gif
                     Line("  tiktok ui error: " + ex.Message);
                 }
 #endif
+
+                try
+                {
+                    Ui.SetDark(true);
+                    using (MediaDownloadForm dialog = new MediaDownloadForm(false))
+                    {
+                        dialog.StartPosition = FormStartPosition.Manual;
+                        dialog.Location = new Point(-4000, -4000);
+                        dialog.Show();
+                        Application.DoEvents();
+                        string shot = Path.Combine(work, "ui-download.png");
+                        SaveShot(dialog, shot);
+                        Check("ui download screenshot", File.Exists(shot) && new FileInfo(shot).Length > 2000);
+
+                        PillButton video = GetField(dialog, "videoPill") as PillButton;
+                        PillButton audio = GetField(dialog, "audioPill") as PillButton;
+                        if (audio != null) Click(audio);
+                        Application.DoEvents();
+                        Check("ui download mp3 selected", video != null && !video.Active
+                            && audio != null && audio.Active);
+                        if (video != null) Click(video);
+                        Application.DoEvents();
+                        Check("ui download video selected", video != null && video.Active
+                            && audio != null && !audio.Active);
+                        dialog.Close();
+                    }
+
+                    using (MediaDownloadForm dialog = new MediaDownloadForm(true))
+                    {
+                        dialog.StartPosition = FormStartPosition.Manual;
+                        dialog.Location = new Point(-4000, -4000);
+                        dialog.Show();
+                        Application.DoEvents();
+                        string shot = Path.Combine(work, "ui-spotify.png");
+                        SaveShot(dialog, shot);
+                        Check("ui spotify screenshot", File.Exists(shot) && new FileInfo(shot).Length > 2000);
+
+                        PillButton wav = GetField(dialog, "wavPill") as PillButton;
+                        PillButton mp3 = GetField(dialog, "audioPill") as PillButton;
+                        if (wav != null) Click(wav);
+                        Application.DoEvents();
+                        string wavShot = Path.Combine(work, "ui-spotify-wav.png");
+                        SaveShot(dialog, wavShot);
+                        Check("ui spotify wav selected", wav != null && wav.Active
+                            && mp3 != null && !mp3.Active
+                            && File.Exists(wavShot) && new FileInfo(wavShot).Length > 2000);
+
+                        if (mp3 != null) Click(mp3);
+                        Application.DoEvents();
+                        Check("ui spotify mp3 selected", wav != null && !wav.Active
+                            && mp3 != null && mp3.Active);
+
+                        dialog.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Check("ui download screenshot", false);
+                    Line("  download ui error: " + ex.Message);
+                }
             }
             catch (Exception ex)
             {
@@ -304,6 +396,13 @@ namespace Video2Gif
         {
             MethodInfo method = target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic);
             if (method != null) method.Invoke(target, arguments);
+        }
+
+        private static void Click(Control control)
+        {
+            MethodInfo method = typeof(Control).GetMethod("OnClick",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            if (method != null) method.Invoke(control, new object[] { EventArgs.Empty });
         }
 
         private static void SetField(object target, string name, object value)

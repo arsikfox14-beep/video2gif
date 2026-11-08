@@ -6,8 +6,8 @@
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
-$src = Join-Path $root "src"
+$root = $PSScriptRoot
+$src = $root
 $build = Join-Path $root "build"
 $out = Join-Path $root $(if ($OutName) { $OutName } elseif ($Legacy) { if ($NoTikTok) { "Video2gif_notiktok.exe" } else { "Video2Gif.exe" } } elseif ($NoTikTok) { "Friday.exe" } else { "Jarvis.exe" })
 $ffmpeg = Join-Path $root "bin\ffmpeg.exe"
@@ -35,6 +35,24 @@ if ($Force -or -not (Test-Path $gz) -or ((Get-Item $ffmpeg).LastWriteTime -gt (G
         $inStream.Close()
     }
     Write-Host ("  ffmpeg.gz: {0:N1} МБ" -f ((Get-Item $gz).Length / 1MB))
+}
+
+# --- yt-dlp -> gzip resource -------------------------------------------------
+$ytdlp = Join-Path $root "bin\yt-dlp.exe"
+$ytgz = Join-Path $build "yt-dlp.gz"
+if (-not (Test-Path $ytdlp)) { throw "Не найден $ytdlp. Положите yt-dlp.exe в папку bin." }
+if ($Force -or -not (Test-Path $ytgz) -or ((Get-Item $ytdlp).LastWriteTime -gt (Get-Item $ytgz).LastWriteTime)) {
+    Write-Host "Сжимаю yt-dlp..."
+    $inStream = [IO.File]::OpenRead($ytdlp)
+    $outStream = [IO.File]::Create($ytgz)
+    try {
+        $gzip = New-Object IO.Compression.GZipStream($outStream, [IO.Compression.CompressionMode]::Compress)
+        try { $inStream.CopyTo($gzip) } finally { $gzip.Close() }
+    } finally {
+        $outStream.Close()
+        $inStream.Close()
+    }
+    Write-Host ("  yt-dlp.gz: {0:N1} МБ" -f ((Get-Item $ytgz).Length / 1MB))
 }
 
 # --- Icon --------------------------------------------------------------------
@@ -115,6 +133,7 @@ $cscArgs = @(
     "/win32icon:$ico",
     "/win32manifest:$(Join-Path $src 'app.manifest')",
     "/resource:$gz,ffmpeg.gz",
+    "/resource:$ytgz,yt-dlp.gz",
     "/reference:System.dll",
     "/reference:System.Core.dll",
     "/reference:System.Drawing.dll",

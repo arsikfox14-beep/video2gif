@@ -210,7 +210,7 @@ namespace Video2Gif
                 dialog.AddExtension = true;
                 dialog.OverwritePrompt = true;
                 dialog.FileName = info.SuggestedName;
-                dialog.InitialDirectory = DefaultFolder(Environment.SpecialFolder.MyVideos);
+                dialog.InitialDirectory = SavePaths.Desktop();
 
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
@@ -227,7 +227,7 @@ namespace Video2Gif
             {
                 dialog.Description = "Куда сохранить фото из TikTok";
                 dialog.ShowNewFolderButton = true;
-                dialog.SelectedPath = DefaultFolder(Environment.SpecialFolder.MyPictures);
+                dialog.SelectedPath = SavePaths.Desktop();
 
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
@@ -241,14 +241,6 @@ namespace Video2Gif
                         info.SuggestedName + "_" + DateTime.Now.ToString("HHmmss"));
                 StartDownloadTo(target);
             }
-        }
-
-        private static string DefaultFolder(Environment.SpecialFolder folder)
-        {
-            string path = Environment.GetFolderPath(folder);
-            if (string.IsNullOrEmpty(path)) path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (string.IsNullOrEmpty(path)) path = Path.GetTempPath();
-            return path;
         }
 
         private void StartDownloadTo(string path)

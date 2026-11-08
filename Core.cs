@@ -98,6 +98,20 @@ namespace Video2Gif
         public VideoInfo Info;
     }
 
+    internal static class SavePaths
+    {
+        public static string Desktop()
+        {
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (string.IsNullOrEmpty(path))
+                path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (string.IsNullOrEmpty(path))
+                path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (string.IsNullOrEmpty(path)) path = Path.GetTempPath();
+            return path;
+        }
+    }
+
     internal static class FfmpegBundle
     {
         private static readonly object Gate = new object();
@@ -164,6 +178,78 @@ namespace Video2Gif
             {
                 try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
                 throw new ConversionException("Не удалось распаковать FFmpeg: " + ex.Message);
+            }
+
+            return exe;
+        }
+    }
+
+    internal static class YtDlpBundle
+    {
+        private static readonly object Gate = new object();
+        private static string cached;
+
+        public static string Path
+        {
+            get
+            {
+                lock (Gate)
+                {
+                    if (cached != null) return cached;
+                    cached = Prepare();
+                    return cached;
+                }
+            }
+        }
+
+        public static void Ensure()
+        {
+            string unused = Path;
+        }
+
+        private static string Prepare()
+        {
+            string dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Video2Gif");
+            string exe = System.IO.Path.Combine(dir, "yt-dlp.exe");
+            string stamp = System.IO.Path.Combine(dir, "yt-dlp-version.txt");
+            string wanted = "yt-dlp-2026.10.26";
+
+            if (File.Exists(exe) && new FileInfo(exe).Length > 15L * 1024L * 1024L &&
+                File.Exists(stamp) && File.ReadAllText(stamp).Trim() == wanted)
+            {
+                return exe;
+            }
+
+            Directory.CreateDirectory(dir);
+
+            Assembly asm = Assembly.GetExecutingAssembly();
+            Stream res = asm.GetManifestResourceStream("yt-dlp.gz");
+            if (res == null)
+            {
+                throw new ConversionException(
+                    "В сборке отсутствует yt-dlp. Пересоберите приложение по инструкции в README.");
+            }
+
+            string tmp = exe + ".tmp";
+            try
+            {
+                using (res)
+                using (GZipStream gz = new GZipStream(res, CompressionMode.Decompress))
+                using (FileStream fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    gz.CopyTo(fs, 1 << 20);
+                }
+
+                if (File.Exists(exe)) File.Delete(exe);
+                File.Move(tmp, exe);
+                File.WriteAllText(stamp, wanted);
+            }
+            catch (Exception ex)
+            {
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+                throw new ConversionException("Не удалось распаковать yt-dlp: " + ex.Message);
             }
 
             return exe;
