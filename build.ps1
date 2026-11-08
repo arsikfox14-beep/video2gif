@@ -6,8 +6,14 @@
 )
 
 $ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
-$src = $root
+$src = $PSScriptRoot
+$parent = Split-Path -Parent $src
+if (Test-Path (Join-Path $parent "src")) {
+    $root = $parent
+    $src = Join-Path $parent "src"
+} else {
+    $root = $src
+}
 $build = Join-Path $root "build"
 $out = Join-Path $root $(if ($OutName) { $OutName } elseif ($Legacy) { if ($NoTikTok) { "Video2gif_notiktok.exe" } else { "Video2Gif.exe" } } elseif ($NoTikTok) { "Friday.exe" } else { "Jarvis.exe" })
 $ffmpeg = Join-Path $root "bin\ffmpeg.exe"

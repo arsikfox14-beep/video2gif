@@ -79,7 +79,8 @@
 Исходники лежат в корне репозитория (C#, WinForms, .NET Framework 4.8).
 Компилятор берётся из Windows: `csc.exe`, отдельный SDK не нужен.
 
-1. Положить в папку `bin` рядом с `build.ps1`:
+1. Положить в папку `bin` в корне проекта (рядом с `build.ps1`
+   или с папкой `src`):
 
    - 64-битный `ffmpeg.exe` — https://ffmpeg.org (сборка gyan.dev);
    - `yt-dlp.exe` — https://github.com/yt-dlp/yt-dlp/releases/latest

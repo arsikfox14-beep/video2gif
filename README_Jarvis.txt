@@ -113,7 +113,8 @@ Node.js, Python и отдельные кодеки не требуются.
 В папке src лежат исходники на C# (WinForms, .NET Framework 4.x).
 Компилятор берётся из Windows: csc.exe, отдельный SDK не нужен.
 
-1. Положите в папку bin 64-битный ffmpeg.exe и yt-dlp.exe
+1. Положите в папку bin в корне проекта (рядом с папкой src)
+   64-битный ffmpeg.exe и yt-dlp.exe
    (https://github.com/yt-dlp/yt-dlp/releases/latest → yt-dlp.exe).
 2. Запустите: powershell -ExecutionPolicy Bypass -File src\build.ps1
 
