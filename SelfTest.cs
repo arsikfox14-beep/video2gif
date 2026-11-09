@@ -258,7 +258,6 @@ namespace Video2Gif
                     Line("  ui error: " + ex.Message);
                 }
 
-#if !NOTIKTOK
                 Check("tiktok url detect",
                     TikTok.LooksLikeUrl("https://www.tiktok.com/@user/video/1234567890123456789") &&
                     TikTok.LooksLikeUrl("vt.tiktok.com/ZPabc123/") &&
@@ -284,7 +283,6 @@ namespace Video2Gif
                     Check("ui tiktok screenshot", false);
                     Line("  tiktok ui error: " + ex.Message);
                 }
-#endif
 
                 try
                 {

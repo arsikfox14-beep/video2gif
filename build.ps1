@@ -1,7 +1,5 @@
 ﻿param(
     [switch]$Force,
-    [switch]$NoTikTok,
-    [switch]$Legacy,
     [string]$OutName = ""
 )
 
@@ -15,7 +13,7 @@ if (Test-Path (Join-Path $parent "src")) {
     $root = $src
 }
 $build = Join-Path $root "build"
-$out = Join-Path $root $(if ($OutName) { $OutName } elseif ($Legacy) { if ($NoTikTok) { "Video2gif_notiktok.exe" } else { "Video2Gif.exe" } } elseif ($NoTikTok) { "Friday.exe" } else { "Jarvis.exe" })
+$out = Join-Path $root $(if ($OutName) { $OutName } else { "Video2Gif.exe" })
 $ffmpeg = Join-Path $root "bin\ffmpeg.exe"
 $gz = Join-Path $build "ffmpeg.gz"
 $ico = Join-Path $src "app.ico"
@@ -127,9 +125,7 @@ if ($Force -or -not (Test-Path $ico)) {
 
 # --- Compile -----------------------------------------------------------------
 Write-Host "Компилирую..."
-$sources = Get-ChildItem (Join-Path $src "*.cs") | Where-Object {
-    -not ($NoTikTok -and ($_.Name -eq "TikTok.cs" -or $_.Name -eq "TikTokForm.cs"))
-} | ForEach-Object { $_.FullName }
+$sources = Get-ChildItem (Join-Path $src "*.cs") | ForEach-Object { $_.FullName }
 $cscArgs = @(
     "/nologo",
     "/target:winexe",
@@ -146,8 +142,6 @@ $cscArgs = @(
     "/reference:System.Windows.Forms.dll",
     "/reference:System.Web.Extensions.dll"
 )
-if ($NoTikTok) { $cscArgs += "/define:NOTIKTOK" }
-if ($Legacy) { $cscArgs += "/define:LEGACY" }
 $cscArgs += $sources
 
 & $csc $cscArgs

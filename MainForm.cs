@@ -153,7 +153,6 @@ namespace Video2Gif
             }
         }
 
-#if !NOTIKTOK
         private void OpenTikTok()
         {
             if (busy) return;
@@ -171,7 +170,6 @@ namespace Video2Gif
                 }
             }
         }
-#endif
 
         private void LoadVideo(string path)
         {

@@ -4,25 +4,24 @@
 
 **by DeepSeek v4.1 flash & arsikfox14 & dismasdismavich**
 
-Установка не нужна: FFmpeg и yt-dlp находятся
-внутри exe. Права администратора не требуются.
+Версия **2.5**: одна сборка **Video2Gif.exe** — с TikTok, YouTube,
+Spotify и другими сайтами.
+
+Установка не нужна: FFmpeg и yt-dlp находятся внутри exe.
+Права администратора не требуются.
 
 ## Скриншоты
 
-**(Версия 2.5 + TT + YOUTUBE И ТП + МУЗЫКА)**
-<img width="967" height="603" alt="изображение" src="https://github.com/user-attachments/assets/4b65cabc-c135-4d55-973c-a39eda8c2220" />
+**(Версия 2.5 + TikTok + YouTube и другое)**
+<img width="967" height="603" alt="Video2Gif" src="https://github.com/user-attachments/assets/4b65cabc-c135-4d55-973c-a39eda8c2220" />
 
-**(Версия 2.0 + TikTok)**
-<img width="990" height="620" alt="Jarvis" src="https://github.com/user-attachments/assets/1fefafc7-0939-407d-8c49-283a4217252b" />
+<img width="990" height="620" alt="Video2Gif" src="https://github.com/user-attachments/assets/1fefafc7-0939-407d-8c49-283a4217252b" />
 
-**(Версия 2.0)**
-<img width="950" height="602" alt="Friday" src="https://github.com/user-attachments/assets/7c5fe19e-5b17-486f-802b-321d1ab136b1" />
+<img width="950" height="602" alt="Video2Gif" src="https://github.com/user-attachments/assets/7c5fe19e-5b17-486f-802b-321d1ab136b1" />
 
-**(Версия 1.2)**
-<img width="961" height="685" alt="video2gif 1.2" src="https://github.com/user-attachments/assets/5236780c-dbf5-4c52-a29a-dcbc58dc01f6" />
+## Что нового в 2.5
 
-## Что нового в 2.4
-
+- Единое имя `video2gif` во всех сборках.
 - После окончания скачивания больше не появляется окно с сообщением —
   окно просто закрывается, файл уже лежит в выбранной папке.
 - У формата WAV показан битрейт (`1411 кбит/с`), как у MP3 (`320 кбит/с`).
@@ -47,6 +46,7 @@
 Меню **«Скачать»** в главном окне:
 
 - **TikTok** — видео MP4 без водяного знака и фото-посты
+  (входит в Video2Gif.exe).
 - **YouTube и другие сайты** — YouTube, SoundCloud, VK и тысячи других
   сайтов через yt-dlp. На выбор видео MP4 или музыка MP3.
 - **Музыка из Spotify** — ссылка на трек, альбом или плейлист.
@@ -59,7 +59,7 @@
 
 ## Как запустить
 
-1. Скачать `Video2Gif.exe`
+1. Скачать `Video2Gif.exe`.
 2. Двойной клик.
 3. Перетащить видео или картинку в окно.
 
@@ -74,11 +74,9 @@
 Исходники лежат в корне репозитория (C#, WinForms, .NET Framework 4.8).
 Компилятор берётся из Windows: `csc.exe`, отдельный SDK не нужен.
 
-1. Положить в папку `bin` в корне проекта (рядом с `build.ps1`
-   или с папкой `src`):
-
-   - 64-битный `ffmpeg.exe` — https://ffmpeg.org (сборка gyan.dev);
-   - `yt-dlp.exe` — https://github.com/yt-dlp/yt-dlp/releases/latest
+1. Положить в папку `bin` в корне проекта (рядом с папкой `src`)
+   64-битный `ffmpeg.exe` — https://ffmpeg.org (сборка gyan.dev) —
+   и `yt-dlp.exe` — https://github.com/yt-dlp/yt-dlp/releases/latest
 
 2. Запустить:
 
@@ -86,18 +84,7 @@
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-Собирается `Video2gif.exe (jarvis)`.
-
-Другие сборки:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1 -NoTikTok
-powershell -ExecutionPolicy Bypass -File build.ps1 -Legacy
-powershell -ExecutionPolicy Bypass -File build.ps1 -Legacy -NoTikTok
-```
-
-- `-NoTikTok` — Старая версия Video2gif.exe (friday) без кнопки и кода TikTok;
-- `-Legacy` — старые имена Video2Gif.exe / Video2gif_notiktok.exe `(по факту нынешний но дипсик не правильно понял)`
+Собирается `Video2Gif.exe`.
 
 Скрипт сжимает FFmpeg и yt-dlp в `build\*.gz`, рисует иконку и собирает exe
 в корне проекта. Файлы `.cs` должны быть в UTF-8 с BOM.
@@ -105,7 +92,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Legacy -NoTikTok
 Самопроверка без графического интерфейса:
 
 ```powershell
-Jarvis.exe --selftest
+Video2Gif.exe --selftest
 ```
 
 Результат пишется в `%TEMP%\video2gif-selftest.log`.
@@ -125,12 +112,14 @@ Jarvis.exe --selftest
 
 ## История версий
 
-- **2.4\2.5** — без окна после скачивания; у WAV показан битрейт.
+- **2.5** — единое имя video2gif, одна сборка с TikTok; без окна после
+  скачивания; у WAV показан битрейт.
+- **2.4** — без окна после скачивания; у WAV показан битрейт.
 - **2.3** — надёжное определение пути файла, аккуратный выбор формата,
   Spotify MP3/WAV, сохранение на рабочий стол, поиск трека по длительности.
 - **2.2** — скачивание с YouTube и других сайтов (yt-dlp), музыка из Spotify,
   новая подпись авторов.
-- **2.0** — Jarvis и Friday, старые имена собираются через `-Legacy`.
+- **2.0** — компактный интерфейс.
 - **1.9** — Sierra по умолчанию.
 - **1.8** — компактный интерфейс, частота кадров 1–60.
 - **1.4** — тёмная тема, скачивание TikTok.
