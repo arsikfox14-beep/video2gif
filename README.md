@@ -12,6 +12,13 @@ Spotify и другими сайтами.
 
 ## Скриншоты
 
+**(Версия 2.7+ mobile)**
+
+<img width="1613" height="656" alt="изображение" src="https://github.com/user-attachments/assets/30e7113c-34a5-4553-a284-8c1e7e0222ec" />
+
+<img width="1067" height="680" alt="Screenshot_20261110_112637" src="https://github.com/user-attachments/assets/981a8b8f-5164-4d3b-86d7-7e0894544d79" />
+
+
 **(Версия 2.5 + TikTok + YouTube и другое)**
 <img width="967" height="603" alt="Video2Gif" src="https://github.com/user-attachments/assets/4b65cabc-c135-4d55-973c-a39eda8c2220" />
 
@@ -126,7 +133,7 @@ Video2Gif.exe --selftest
 
 ## История версий
 
-- **2.7** — мини-игра «Змейка» по кнопке-геймпаду в шапке.
+- **2.7** — мини-игра «Змейка» по кнопке-геймпаду в шапке + мобильная версия.
 - **2.6** — исправлена конвертация картинки с шириной 0 (оригинальный размер);
   без окна после скачивания; у WAV показан битрейт.
 - **2.5** — единое имя video2gif, одна сборка с TikTok; без окна после
