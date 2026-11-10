@@ -27,6 +27,8 @@ namespace Video2Gif
         private PillButton cancelButton;
         private PillButton themeButton;
         private PillButton downloadsButton;
+        private GamepadButton gameButton;
+        private ToolTip gameTip;
 
         private Panel progressView;
         private Label percentLabel;
@@ -91,7 +93,15 @@ namespace Video2Gif
             Controls.Add(Lbl("видео и картинки → GIF",
                 Ui.Small, Ui.Muted, 71, 36, 300, 18));
             Controls.Add(Lbl("v" + Program.Version + " · локально", Ui.Tiny, Ui.Faint,
-                460, 24, 240, 18, ContentAlignment.MiddleRight));
+                388, 24, 262, 18, ContentAlignment.MiddleRight));
+
+            gameButton = new GamepadButton();
+            gameButton.SetBounds(Ui.P(660), Ui.P(16), Ui.P(44), Ui.P(32));
+            gameButton.Click += delegate { OpenGame(); };
+            Controls.Add(gameButton);
+
+            gameTip = new ToolTip();
+            gameTip.SetToolTip(gameButton, "Играть · Змейка");
 
             downloadsButton = new PillButton();
             downloadsButton.Ghost = true;

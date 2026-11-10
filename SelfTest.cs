@@ -65,6 +65,51 @@ namespace Video2Gif
                     MediaDownloader.DurationFilter(new MediaTrack()) == null);
                 Check("default folder desktop", Directory.Exists(SavePaths.Desktop()));
 
+                SnakeGame snake = new SnakeGame(20, 15);
+                Check("snake initial",
+                    snake.Snake.Count == 3 && snake.Alive &&
+                    snake.Direction.X == 1 && snake.Direction.Y == 0);
+                Point snakeHead = snake.Snake[0];
+                Check("snake step",
+                    snake.Step() == SnakeStep.Moved &&
+                    snake.Snake[0].X == snakeHead.X + 1 && snake.Snake.Count == 3);
+                snake.Turn(-1, 0);
+                snake.Step();
+                Check("snake no reverse", snake.Snake[0].X == snakeHead.X + 2);
+                snake.Food = new Point(snake.Snake[0].X + 1, snake.Snake[0].Y);
+                Check("snake eat",
+                    snake.Step() == SnakeStep.Ate && snake.Score == 1 && snake.Snake.Count == 4);
+
+                bool foodOk = true;
+                for (int i = 0; i < 40; i++)
+                {
+                    snake.PlaceFood();
+                    if (snake.Food.X < 0 || snake.Food.Y < 0 ||
+                        snake.Food.X >= snake.Cols || snake.Food.Y >= snake.Rows ||
+                        snake.Snake.Contains(snake.Food))
+                    {
+                        foodOk = false;
+                        break;
+                    }
+                }
+                Check("snake food free cell", foodOk);
+
+                SnakeGame wall = new SnakeGame(20, 15);
+                for (int i = 0; i < 20 && wall.Alive; i++) wall.Step();
+                Check("snake wall", !wall.Alive);
+
+                SnakeGame self = new SnakeGame(20, 15);
+                self.Food = new Point(self.Snake[0].X + 1, self.Snake[0].Y);
+                self.Step();
+                self.Food = new Point(self.Snake[0].X + 1, self.Snake[0].Y);
+                self.Step();
+                self.Turn(0, -1);
+                self.Step();
+                self.Turn(-1, 0);
+                self.Step();
+                self.Turn(0, 1);
+                Check("snake self collision", self.Step() == SnakeStep.HitSelf && !self.Alive);
+
                 string probe = Path.Combine(work, "probe song.mp3");
                 File.WriteAllText(probe, "x");
                 Check("download path resolve",
@@ -195,6 +240,7 @@ namespace Video2Gif
                         FlatInput fpsBox = GetField(form, "fpsInput") as FlatInput;
                         Check("ui fps default 30", fpsBox != null && fpsBox.Value == "30");
                         Check("ui colors slider removed", GetField(form, "colorsSlider") == null);
+                        Check("ui gamepad button", GetField(form, "gameButton") is GamepadButton);
 
                         Invoke(form, "FinishSuccess", fast);
                         Application.DoEvents();
@@ -272,6 +318,27 @@ namespace Video2Gif
                     TikTok.LooksLikeUrl("https://www.tiktok.com/@user/video/1234567890123456789") &&
                     TikTok.LooksLikeUrl("vt.tiktok.com/ZPabc123/") &&
                     !TikTok.LooksLikeUrl("https://example.com/video/1"));
+
+                try
+                {
+                    Ui.SetDark(true);
+                    using (SnakeForm game = new SnakeForm())
+                    {
+                        game.StartPosition = FormStartPosition.Manual;
+                        game.Location = new Point(-4000, -4000);
+                        game.Show();
+                        Application.DoEvents();
+                        string shot = Path.Combine(work, "ui-snake.png");
+                        SaveShot(game, shot);
+                        Check("ui snake screenshot", File.Exists(shot) && new FileInfo(shot).Length > 2000);
+                        game.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Check("ui snake screenshot", false);
+                    Line("  snake ui error: " + ex.Message);
+                }
 
                 try
                 {

@@ -153,6 +153,15 @@ namespace Video2Gif
             }
         }
 
+        private void OpenGame()
+        {
+            if (busy) return;
+            using (SnakeForm game = new SnakeForm())
+            {
+                game.ShowDialog(this);
+            }
+        }
+
         private void OpenTikTok()
         {
             if (busy) return;
@@ -285,6 +294,7 @@ namespace Video2Gif
             ditherSierra.Enabled = !busy;
             ditherNone.Enabled = !busy;
             downloadsButton.Enabled = !busy;
+            if (gameButton != null) gameButton.Enabled = !busy;
         }
 
         /* ------------------------------------------------------- Конвертация */
