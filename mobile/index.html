@@ -181,7 +181,7 @@
       <p>видео и картинки → GIF</p>
     </div>
     <div class="spacer"></div>
-    <div class="ver">2.6 · mobile</div>
+    <div class="ver">2.7 · mobile</div>
     <button id="themeBtn" class="ghost" type="button" style="padding:9px 12px;font-size:13px">Светлая</button>
   </header>
 
@@ -218,8 +218,8 @@
       </div>
       <div class="field">
         <label for="fpsInput">Кадров в секунду</label>
-        <input id="fpsInput" type="number" min="1" max="60" step="1" value="15" inputmode="numeric">
-        <div class="hint">1–60 · 15 — для телефона</div>
+        <input id="fpsInput" type="number" min="1" max="60" step="1" value="30" inputmode="numeric">
+        <div class="hint">1–60 · 30 — по умолчанию</div>
       </div>
       <div class="field wide">
         <label for="ditherSelect">Сглаживание переходов</label>
@@ -567,7 +567,7 @@ var __defProp=Object.defineProperty,__markAsModule=e=>__defProp(e,"__esModule",{
   function readOptions() {
     var width = Math.round(num(el.width.value, 0));
     if (width < 0) width = 0;
-    var fps = Math.round(num(el.fps.value, 15));
+    var fps = Math.round(num(el.fps.value, 30));
     fps = clamp(fps, 1, 60);
     var start = Math.max(0, num(el.start.value, 0));
     var dur = Math.max(0, num(el.dur.value, 0));
@@ -819,7 +819,19 @@ var __defProp=Object.defineProperty,__markAsModule=e=>__defProp(e,"__esModule",{
     return new Promise(function (r) { setTimeout(r, 0); });
   }
 
-  async function encodeGif(blobs, w, h, delayMs, dither, loop, onProgress, isCancelled) {
+  function frameDelays(count, fps) {
+    var out = [];
+    var acc = 0;
+    for (var i = 0; i < count; i++) {
+      var cs = Math.round((i + 1) * 100 / fps) - acc;
+      if (cs < 1) cs = 1;
+      acc += cs;
+      out.push(cs * 10);
+    }
+    return out;
+  }
+
+  async function encodeGif(blobs, w, h, delays, dither, loop, onProgress, isCancelled) {
     var canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
     var ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -842,7 +854,7 @@ var __defProp=Object.defineProperty,__markAsModule=e=>__defProp(e,"__esModule",{
 
       enc.writeFrame(indices, w, h, {
         palette: palette,
-        delay: delayMs,
+        delay: delays[i] || 100,
         repeat: loop ? 0 : -1,
         dispose: 1
       });
@@ -864,7 +876,7 @@ var __defProp=Object.defineProperty,__markAsModule=e=>__defProp(e,"__esModule",{
     setProgress(0, "Готовлю…");
 
     try {
-      var blobs, w, h, delayMs, frameCount;
+      var blobs, w, h, delays, frameCount;
 
       if (state.kind === "image") {
         w = opts.width > 0 ? Math.min(opts.width, state.width) : state.width;
@@ -878,7 +890,7 @@ var __defProp=Object.defineProperty,__markAsModule=e=>__defProp(e,"__esModule",{
         drawTo(ctx, state.bitmap, w, h);
         var still = await canvasToBlob(canvas, "image/png");
         blobs = [still];
-        delayMs = 100;
+        delays = [100];
         frameCount = 1;
         setProgress(10, "Кодирую GIF…");
       } else {
@@ -903,11 +915,11 @@ var __defProp=Object.defineProperty,__markAsModule=e=>__defProp(e,"__esModule",{
         blobs = await captureFrames(video, start, dur, opts.fps, w, h, function (p) {
           setProgress(Math.round(p * 0.45), "Записываю кадры… " + Math.round(p) + "%");
         }, function () { return state.cancelled; });
-        delayMs = 1000 / opts.fps;
+        delays = frameDelays(frameCount, opts.fps);
         setProgress(46, "Кодирую GIF…");
       }
 
-      var blob = await encodeGif(blobs, w, h, delayMs, opts.dither, opts.loop, function (p) {
+      var blob = await encodeGif(blobs, w, h, delays, opts.dither, opts.loop, function (p) {
         setProgress(46 + Math.round(p * 0.54), "Кодирую GIF… " + Math.round(p) + "%");
       }, function () { return state.cancelled; });
 
