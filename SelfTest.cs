@@ -116,6 +116,16 @@ namespace Video2Gif
                 Check("image two-pass progress", imageSlowMax >= 90);
                 Line("  image gif: " + Fmt.Size(new FileInfo(imageSlow).Length) + ", progress max " + imageSlowMax + "%");
 
+                string imageOrigFast = Path.Combine(work, "image-orig-fast.gif");
+                int imageOrigFastMax = RunConversion(imageInfo, still, imageOrigFast, true, 0);
+                Check("image original width fast gif", IsGif(imageOrigFast) && new FileInfo(imageOrigFast).Length > 1000);
+                Check("image original width fast progress", imageOrigFastMax >= 90);
+
+                string imageOrigSlow = Path.Combine(work, "image-orig-two-pass.gif");
+                int imageOrigSlowMax = RunConversion(imageInfo, still, imageOrigSlow, false, 0);
+                Check("image original width two-pass gif", IsGif(imageOrigSlow) && new FileInfo(imageOrigSlow).Length > 1000);
+                Check("image original width two-pass progress", imageOrigSlowMax >= 90);
+
                 string longInput = Path.Combine(work, "long.mp4");
                 string longOut;
                 int longCode = RunProcess(ffmpeg,
@@ -360,14 +370,14 @@ namespace Video2Gif
             return code;
         }
 
-        private static int RunConversion(VideoInfo info, string input, string output, bool fast)
+        private static int RunConversion(VideoInfo info, string input, string output, bool fast, int width = 320)
         {
             ConversionOptions options = new ConversionOptions();
             options.Input = input;
             options.Output = output;
             options.Palette = Path.Combine(Path.GetDirectoryName(output), "palette-" + (fast ? "f" : "s") + ".png");
             options.TempDir = Path.GetDirectoryName(output);
-            options.Width = 320;
+            options.Width = width;
             options.Fps = 30;
             options.Colors = 256;
             options.Dither = "bayer";

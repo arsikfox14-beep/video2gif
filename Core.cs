@@ -431,6 +431,7 @@ namespace Video2Gif
                 filters.Add("scale=" + even.ToString(CultureInfo.InvariantCulture) + ":-1:flags=lanczos");
             }
             string chain = string.Join(",", filters.ToArray());
+            string chainPrefix = chain.Length > 0 ? chain + "," : "";
             string dither = DitherFilter(o.Dither);
 
             string common = "-hide_banner -loglevel error -progress pipe:1 -nostats";
@@ -440,7 +441,7 @@ namespace Video2Gif
 
             if (o.Fast)
             {
-                string graph = chain + ",split[a][b];[a]palettegen=max_colors=" +
+                string graph = (chain.Length > 0 ? chain + "," : "[0:v]") + "split[a][b];[a]palettegen=max_colors=" +
                     o.Colors.ToString(CultureInfo.InvariantCulture) + ":stats_mode=diff[p];" +
                     "[b][p]paletteuse=dither=" + dither + ":diff_mode=rectangle";
                 string args = common + startArg + " -i " + Fmt.Quote(o.Input) + durationArg +
@@ -450,13 +451,15 @@ namespace Video2Gif
             }
             else
             {
-                string paletteFilter = chain + ",palettegen=max_colors=" +
+                string paletteFilter = chainPrefix + "palettegen=max_colors=" +
                     o.Colors.ToString(CultureInfo.InvariantCulture) + ":stats_mode=diff";
                 string args1 = common + startArg + " -i " + Fmt.Quote(o.Input) + durationArg +
                     " -vf " + Fmt.Quote(paletteFilter) + " -an -y " + Fmt.Quote(o.Palette);
                 RunPass(ffmpeg, args1, total, 0, 30, "Строим палитру", report);
 
-                string graph = chain + "[x];[x][1:v]paletteuse=dither=" + dither + ":diff_mode=rectangle";
+                string graph = chain.Length > 0
+                    ? chain + "[x];[x][1:v]paletteuse=dither=" + dither + ":diff_mode=rectangle"
+                    : "[0:v][1:v]paletteuse=dither=" + dither + ":diff_mode=rectangle";
                 string args2 = common + startArg + " -i " + Fmt.Quote(o.Input) + " -i " + Fmt.Quote(o.Palette) +
                     durationArg + " -lavfi " + Fmt.Quote(graph) + " -an -loop " + (o.Loop ? "0" : "-1") +
                     rateArg + " -y " + Fmt.Quote(o.Output);
