@@ -16,7 +16,7 @@ Spotify и другими сайтами.
 
 <img width="1613" height="656" alt="изображение" src="https://github.com/user-attachments/assets/30e7113c-34a5-4553-a284-8c1e7e0222ec" />
 
-<img width="1067" height="680" alt="Screenshot_20261110_112637" src="https://github.com/user-attachments/assets/981a8b8f-5164-4d3b-86d7-7e0894544d79" />
+<img width="600" height="800" alt="Screenshot_20261110_112637" src="https://github.com/user-attachments/assets/981a8b8f-5164-4d3b-86d7-7e0894544d79" />
 
 
 **(Версия 2.5 + TikTok + YouTube и другое)**
