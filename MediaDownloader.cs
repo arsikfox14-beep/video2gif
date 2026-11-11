@@ -525,14 +525,16 @@ namespace Video2Gif
             if (audio)
             {
                 attempts.Add(new Attempt(null, null));
+                attempts.Add(new Attempt(null, "youtube:player_client=tv_embedded"));
                 attempts.Add(new Attempt(null, "youtube:player_client=android"));
             }
             else
             {
                 // Сначала лучшее качество: видео и звук отдельными дорожками.
                 attempts.Add(new Attempt(BestVideoFormat, null));
-                // Если YouTube не отдал звуковую дорожку — пробуем другой клиент.
-                attempts.Add(new Attempt(BestVideoFormat, "youtube:player_client=android"));
+                // Если первый клиент не отдал звук, пробуем другой —
+                // тоже в максимальном качестве.
+                attempts.Add(new Attempt(BestVideoFormat, "youtube:player_client=tv_embedded"));
                 // Последний шанс: готовый файл со звуком, без слияния.
                 attempts.Add(new Attempt(CombinedVideoFormat, "youtube:player_client=android"));
             }
