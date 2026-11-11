@@ -495,10 +495,24 @@ namespace Video2Gif
                 + " & duration <= " + high.ToString(CultureInfo.InvariantCulture);
         }
 
+        private const string BestVideoFormat = "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b";
+        private const string CombinedVideoFormat = "b[ext=mp4]/b/bv*+ba/b";
+
+        private sealed class Attempt
+        {
+            public readonly string Format;
+            public readonly string ExtractorArgs;
+
+            public Attempt(string format, string extractorArgs)
+            {
+                Format = format;
+                ExtractorArgs = extractorArgs;
+            }
+        }
+
         private void RunOne(string target, bool audio, string audioFormat, string folder,
             Action<int> percent)
         {
-            DateTime startedUtc = DateTime.UtcNow;
             string ffmpegDir = Path.GetDirectoryName(FfmpegBundle.Path);
             string format = string.IsNullOrEmpty(audioFormat) ? "mp3" : audioFormat;
             string template = Path.Combine(folder, audio
@@ -507,6 +521,94 @@ namespace Video2Gif
             string listFile = Path.Combine(Path.GetTempPath(),
                 "video2gif-" + Guid.NewGuid().ToString("N") + ".txt");
 
+            List<Attempt> attempts = new List<Attempt>();
+            if (audio)
+            {
+                attempts.Add(new Attempt(null, null));
+                attempts.Add(new Attempt(null, "youtube:player_client=android"));
+            }
+            else
+            {
+                // Сначала лучшее качество: видео и звук отдельными дорожками.
+                attempts.Add(new Attempt(BestVideoFormat, null));
+                // Если YouTube не отдал звуковую дорожку — пробуем другой клиент.
+                attempts.Add(new Attempt(BestVideoFormat, "youtube:player_client=android"));
+                // Последний шанс: готовый файл со звуком, без слияния.
+                attempts.Add(new Attempt(CombinedVideoFormat, "youtube:player_client=android"));
+            }
+
+            string lastError = null;
+            List<string> found = null;
+
+            for (int i = 0; i < attempts.Count; i++)
+            {
+                if (cancelled) throw new ConversionCancelledException();
+
+                HashSet<string> before = Snapshot(folder);
+                DateTime attemptStart = DateTime.UtcNow;
+                try { if (File.Exists(listFile)) File.Delete(listFile); } catch { }
+
+                try
+                {
+                    found = RunAttempt(attempts[i], target, audio, format, folder,
+                        template, ffmpegDir, listFile, percent);
+                }
+                catch (ConversionCancelledException)
+                {
+                    CleanupNew(folder, before, attemptStart);
+                    throw;
+                }
+                catch (ConversionException ex)
+                {
+                    lastError = ex.Message;
+                    CleanupNew(folder, before, attemptStart);
+                    found = null;
+                    if (i + 1 < attempts.Count) continue;
+                    throw new ConversionException(lastError);
+                }
+
+                if (found.Count == 0)
+                {
+                    string recent = FindRecentFile(folder, attemptStart, audio, format);
+                    if (recent != null) found.Add(recent);
+                }
+
+                if (found.Count == 0)
+                {
+                    lastError = "Файл скачался, но программа не смогла определить его путь.";
+                    CleanupNew(folder, before, attemptStart);
+                    found = null;
+                    if (i + 1 < attempts.Count) continue;
+                    throw new ConversionException(lastError);
+                }
+
+                break;
+            }
+
+            try { if (File.Exists(listFile)) File.Delete(listFile); } catch { }
+
+            if (found == null || found.Count == 0)
+            {
+                throw new ConversionException(lastError != null ? lastError : "Ничего не скачалось.");
+            }
+
+            lock (gate)
+            {
+                for (int i = 0; i < found.Count; i++)
+                {
+                    string path = found[i];
+                    bool exists = files.Exists(delegate(string known)
+                    {
+                        return string.Equals(known, path, StringComparison.OrdinalIgnoreCase);
+                    });
+                    if (!exists) files.Add(path);
+                }
+            }
+        }
+
+        private List<string> RunAttempt(Attempt attempt, string target, bool audio, string format,
+            string folder, string template, string ffmpegDir, string listFile, Action<int> percent)
+        {
             StringBuilder args = new StringBuilder();
             Add(args, "--ignore-config");
             Add(args, "--no-warnings");
@@ -516,7 +618,12 @@ namespace Video2Gif
             Add(args, "--force-overwrites");
             Add(args, "--concurrent-fragments", "4");
             Add(args, "--retries", "3");
+            Add(args, "--fragment-retries", "5");
             Add(args, "--ffmpeg-location", ffmpegDir);
+            if (!string.IsNullOrEmpty(attempt.ExtractorArgs))
+            {
+                Add(args, "--extractor-args", attempt.ExtractorArgs);
+            }
             Add(args, "-o", template);
             Add(args, "--print-to-file", "after_move:filepath");
             Add(args, listFile);
@@ -532,7 +639,7 @@ namespace Video2Gif
             }
             else
             {
-                Add(args, "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b");
+                Add(args, "-f", attempt.Format);
                 Add(args, "--merge-output-format", "mp4");
             }
             Add(args, target);
@@ -546,6 +653,8 @@ namespace Video2Gif
             psi.StandardErrorEncoding = Encoding.UTF8;
 
             StringBuilder error = new StringBuilder();
+            StringBuilder lastLine = new StringBuilder();
+            bool collecting = false;
 
             using (Process process = new Process())
             {
@@ -577,11 +686,23 @@ namespace Video2Gif
                     {
                         error.Length = 0;
                         error.Append(line);
+                        collecting = true;
+                        return;
                     }
-                    else if (error.Length == 0 && line.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0)
+
+                    if (collecting)
                     {
-                        error.Append(line);
+                        if (line.StartsWith("[download]", StringComparison.OrdinalIgnoreCase) ||
+                            line.StartsWith("[Merger]", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return;
+                        }
+                        if (error.Length < 700) error.Append(' ').Append(line);
+                        return;
                     }
+
+                    lastLine.Length = 0;
+                    lastLine.Append(line);
                 };
 
                 lock (gate) { active = process; }
@@ -600,39 +721,68 @@ namespace Video2Gif
                 if (cancelled) throw new ConversionCancelledException();
                 if (process.ExitCode != 0)
                 {
-                    string message = error.Length > 0
-                        ? error.ToString()
-                        : "yt-dlp завершился с ошибкой (код " + process.ExitCode + ").";
+                    string message = error.ToString().Trim();
+                    if (message.Length <= 6 && lastLine.Length > 0)
+                    {
+                        message = lastLine.ToString();
+                    }
+                    if (message.Length <= 6)
+                    {
+                        message = "yt-dlp завершился с ошибкой (код " + process.ExitCode + ").";
+                    }
                     throw new ConversionException(message);
                 }
             }
 
-            List<string> found = ReadResultFile(listFile, folder);
-            try { if (File.Exists(listFile)) File.Delete(listFile); } catch { }
+            return ReadResultFile(listFile, folder);
+        }
 
-            if (found.Count == 0)
+        private static HashSet<string> Snapshot(string folder)
+        {
+            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
             {
-                string recent = FindRecentFile(folder, startedUtc, audio, format);
-                if (recent != null) found.Add(recent);
-            }
-
-            if (found.Count == 0)
-            {
-                throw new ConversionException("Файл скачался, но программа не смогла определить его путь.");
-            }
-
-            lock (gate)
-            {
-                for (int i = 0; i < found.Count; i++)
+                string[] entries = Directory.GetFiles(folder);
+                for (int i = 0; i < entries.Length; i++)
                 {
-                    string path = found[i];
-                    bool exists = files.Exists(delegate(string known)
-                    {
-                        return string.Equals(known, path, StringComparison.OrdinalIgnoreCase);
-                    });
-                    if (!exists) files.Add(path);
+                    names.Add(Path.GetFileName(entries[i]));
                 }
             }
+            catch { }
+            return names;
+        }
+
+        private static void CleanupNew(string folder, HashSet<string> before, DateTime since)
+        {
+            // Неудачная попытка могла оставить видео без звука или недокачанный
+            // файл. Убираем только то, чего не было до попытки.
+            try
+            {
+                string[] exts = new string[]
+                {
+                    ".mp4", ".m4a", ".webm", ".mkv", ".mov", ".opus",
+                    ".mp3", ".wav", ".part", ".ytdl", ".temp"
+                };
+                string[] entries = Directory.GetFiles(folder);
+                for (int i = 0; i < entries.Length; i++)
+                {
+                    string path = entries[i];
+                    string name = Path.GetFileName(path);
+                    if (before.Contains(name)) continue;
+
+                    string ext = Path.GetExtension(path).ToLowerInvariant();
+                    bool allowed = false;
+                    for (int j = 0; j < exts.Length; j++)
+                    {
+                        if (ext == exts[j]) { allowed = true; break; }
+                    }
+                    if (!allowed) continue;
+                    if (File.GetLastWriteTimeUtc(path) < since.AddSeconds(-2)) continue;
+
+                    try { File.Delete(path); } catch { }
+                }
+            }
+            catch { }
         }
 
         private static List<string> ReadResultFile(string path, string folder)
