@@ -248,8 +248,6 @@ namespace Video2Gif
         public static readonly Font H2 = new Font("Segoe UI", 12.5f, FontStyle.Bold);
         public static readonly Font H1 = new Font("Segoe UI", 15f, FontStyle.Bold);
         public static readonly Font Logo = new Font("Segoe UI", 14f, FontStyle.Bold);
-        public static readonly Font Glyph = new Font("Segoe UI", 13f, FontStyle.Bold);
-        public static readonly Font Arrow = new Font("Segoe UI", 19f);
 
         private static double DetectScale()
         {
@@ -392,6 +390,46 @@ namespace Video2Gif
             finally
             {
                 g.Restore(state);
+            }
+        }
+
+        public static void DrawUpArrow(Graphics g, Rectangle r, Color color)
+        {
+            float cx = r.X + r.Width / 2f;
+            float top = r.Y + r.Height * 0.24f;
+            float bottom = r.Y + r.Height * 0.62f;
+            float head = r.Width * 0.19f;
+
+            using (Pen pen = new Pen(color, Math.Max(2f, P(2.1))))
+            {
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+                pen.LineJoin = LineJoin.Round;
+
+                g.DrawLine(pen, cx, bottom, cx, top);
+                g.DrawLine(pen, cx, top, cx - head, top + head);
+                g.DrawLine(pen, cx, top, cx + head, top + head);
+
+                float left = cx - r.Width * 0.26f;
+                float right = cx + r.Width * 0.26f;
+                float trayY = r.Y + r.Height * 0.76f;
+                g.DrawLine(pen, left, trayY - r.Height * 0.14f, left, trayY);
+                g.DrawLine(pen, left, trayY, right, trayY);
+                g.DrawLine(pen, right, trayY - r.Height * 0.14f, right, trayY);
+            }
+        }
+
+        public static void DrawPlayGlyph(Graphics g, Rectangle r, Color color)
+        {
+            PointF[] triangle =
+            {
+                new PointF(r.X + r.Width * 0.38f, r.Y + r.Height * 0.28f),
+                new PointF(r.X + r.Width * 0.38f, r.Y + r.Height * 0.72f),
+                new PointF(r.X + r.Width * 0.74f, r.Y + r.Height * 0.50f)
+            };
+            using (SolidBrush brush = new SolidBrush(color))
+            {
+                g.FillPolygon(brush, triangle);
             }
         }
 
@@ -716,11 +754,16 @@ namespace Video2Gif
             int iconX = Ui.P(20);
             int iconY = (Height - iconSize) / 2;
             Rectangle iconRect = new Rectangle(iconX, iconY, iconSize, iconSize);
-            Ui.FillRound(g, iconRect, Ui.P(12), Selected ? Ui.AccentSoft : Ui.AccentWash);
+            Ui.FillRound(g, iconRect, Ui.P(12), Ui.AccentSoft);
 
-            TextRenderer.DrawText(g, Selected ? "▶" : "↑", Selected ? Ui.Glyph : Ui.Arrow, iconRect,
-                Ui.Accent,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            if (Selected)
+            {
+                Ui.DrawPlayGlyph(g, iconRect, Ui.Text);
+            }
+            else
+            {
+                Ui.DrawUpArrow(g, iconRect, Ui.Text);
+            }
 
             int textX = iconX + iconSize + Ui.P(16);
             int rightPad = Selected ? Ui.P(150) : Ui.P(14);
