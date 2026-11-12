@@ -5,11 +5,47 @@ using System.Windows.Forms;
 
 namespace Video2Gif
 {
+    internal enum ThemeKind
+    {
+        Light,
+        Dark,
+        NewYear,
+        Halloween
+    }
+
     internal static class Ui
     {
         public static readonly double S = DetectScale();
 
         public static bool Dark;
+        public static ThemeKind Theme = ThemeKind.Dark;
+
+        public static bool Holiday
+        {
+            get { return Theme == ThemeKind.NewYear || Theme == ThemeKind.Halloween; }
+        }
+
+        public static bool NewYear
+        {
+            get { return Theme == ThemeKind.NewYear; }
+        }
+
+        public static bool Halloween
+        {
+            get { return Theme == ThemeKind.Halloween; }
+        }
+
+        public static string ThemeName
+        {
+            get
+            {
+                if (Theme == ThemeKind.Light) return "light";
+                if (Theme == ThemeKind.NewYear) return "newyear";
+                if (Theme == ThemeKind.Halloween) return "halloween";
+                return "dark";
+            }
+        }
+
         public static Color Bg;
         public static Color Card;
         public static Color Border;
@@ -30,18 +66,34 @@ namespace Video2Gif
 
         static Ui()
         {
-            ApplyColors(false);
+            ApplyColors(ThemeKind.Dark);
+        }
+
+        public static void SetTheme(string name)
+        {
+            ThemeKind kind = ThemeKind.Dark;
+            string value = (name ?? "").Trim().ToLowerInvariant();
+            if (value == "light") kind = ThemeKind.Light;
+            else if (value == "newyear" || value == "new-year" || value == "ny") kind = ThemeKind.NewYear;
+            else if (value == "halloween" || value == "spooky") kind = ThemeKind.Halloween;
+            SetTheme(kind);
+        }
+
+        public static void SetTheme(ThemeKind kind)
+        {
+            Theme = kind;
+            Dark = kind != ThemeKind.Light;
+            ApplyColors(kind);
         }
 
         public static void SetDark(bool dark)
         {
-            Dark = dark;
-            ApplyColors(dark);
+            SetTheme(dark ? ThemeKind.Dark : ThemeKind.Light);
         }
 
-        private static void ApplyColors(bool dark)
+        private static void ApplyColors(ThemeKind kind)
         {
-            if (!dark)
+            if (kind == ThemeKind.Light)
             {
                 Bg = Color.FromArgb(247, 247, 248);
                 Card = Color.White;
@@ -60,6 +112,46 @@ namespace Video2Gif
                 Good = Color.FromArgb(16, 148, 104);
                 Bad = Color.FromArgb(214, 48, 49);
                 OnAccent = Color.White;
+            }
+            else if (kind == ThemeKind.NewYear)
+            {
+                Bg = Color.FromArgb(9, 21, 38);
+                Card = Color.FromArgb(16, 34, 56);
+                Border = Color.FromArgb(31, 57, 86);
+                BorderStrong = Color.FromArgb(60, 96, 133);
+                Text = Color.FromArgb(240, 247, 255);
+                Muted = Color.FromArgb(157, 181, 206);
+                Faint = Color.FromArgb(109, 134, 161);
+                Accent = Color.FromArgb(126, 200, 255);
+                AccentDark = Color.FromArgb(90, 175, 240);
+                AccentInk = Color.FromArgb(126, 200, 255);
+                AccentSoft = Color.FromArgb(24, 50, 78);
+                AccentLine = Color.FromArgb(49, 86, 122);
+                AccentWash = Color.FromArgb(15, 34, 55);
+                Track = Color.FromArgb(23, 45, 70);
+                Good = Color.FromArgb(104, 226, 168);
+                Bad = Color.FromArgb(255, 120, 120);
+                OnAccent = Color.FromArgb(7, 19, 33);
+            }
+            else if (kind == ThemeKind.Halloween)
+            {
+                Bg = Color.FromArgb(18, 12, 24);
+                Card = Color.FromArgb(29, 19, 38);
+                Border = Color.FromArgb(54, 38, 68);
+                BorderStrong = Color.FromArgb(86, 62, 104);
+                Text = Color.FromArgb(246, 238, 255);
+                Muted = Color.FromArgb(180, 160, 198);
+                Faint = Color.FromArgb(126, 107, 144);
+                Accent = Color.FromArgb(255, 140, 66);
+                AccentDark = Color.FromArgb(232, 110, 38);
+                AccentInk = Color.FromArgb(255, 140, 66);
+                AccentSoft = Color.FromArgb(45, 29, 55);
+                AccentLine = Color.FromArgb(80, 54, 94);
+                AccentWash = Color.FromArgb(34, 22, 44);
+                Track = Color.FromArgb(41, 28, 52);
+                Good = Color.FromArgb(118, 224, 160);
+                Bad = Color.FromArgb(255, 92, 92);
+                OnAccent = Color.FromArgb(26, 14, 8);
             }
             else
             {
@@ -204,6 +296,105 @@ namespace Video2Gif
         public const TextFormatFlags CenterMid =
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
             TextFormatFlags.SingleLine;
+
+        /* ------------------------------------------------------ Праздничные узоры */
+
+        public static void DrawSnowflake(Graphics g, float cx, float cy, float radius, Color color, float width)
+        {
+            using (Pen pen = new Pen(color, Math.Max(1f, width)))
+            {
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+                for (int i = 0; i < 6; i++)
+                {
+                    double angle = Math.PI / 3.0 * i;
+                    float x = cx + (float)(Math.Cos(angle) * radius);
+                    float y = cy + (float)(Math.Sin(angle) * radius);
+                    g.DrawLine(pen, cx, cy, x, y);
+
+                    float bx = cx + (float)(Math.Cos(angle) * radius * 0.62);
+                    float by = cy + (float)(Math.Sin(angle) * radius * 0.62);
+                    float branch = radius * 0.34f;
+                    double a1 = angle + Math.PI / 4.0;
+                    double a2 = angle - Math.PI / 4.0;
+                    g.DrawLine(pen, bx, by,
+                        bx + (float)(Math.Cos(a1) * branch), by + (float)(Math.Sin(a1) * branch));
+                    g.DrawLine(pen, bx, by,
+                        bx + (float)(Math.Cos(a2) * branch), by + (float)(Math.Sin(a2) * branch));
+                }
+            }
+        }
+
+        public static void DrawPumpkin(Graphics g, Rectangle r, Color body, Color face)
+        {
+            using (SolidBrush brush = new SolidBrush(body))
+            {
+                g.FillEllipse(brush, r);
+            }
+
+            float ridge = Math.Max(1f, r.Width * 0.035f);
+            using (Pen pen = new Pen(Color.FromArgb(70, face), ridge))
+            {
+                g.DrawArc(pen, r.X + r.Width / 4, r.Y + r.Height / 8,
+                    r.Width / 2, r.Height * 3 / 4, 80, 200);
+            }
+
+            float stemW = Math.Max(2f, r.Width * 0.10f);
+            using (Pen stem = new Pen(body, stemW))
+            {
+                stem.StartCap = LineCap.Round;
+                stem.EndCap = LineCap.Round;
+                g.DrawLine(stem, r.X + r.Width * 0.52f, r.Y + r.Height * 0.06f,
+                    r.X + r.Width * 0.56f, r.Y - r.Height * 0.10f);
+            }
+
+            using (SolidBrush ink = new SolidBrush(face))
+            {
+                PointF[] left =
+                {
+                    new PointF(r.X + r.Width * 0.28f, r.Y + r.Height * 0.38f),
+                    new PointF(r.X + r.Width * 0.44f, r.Y + r.Height * 0.38f),
+                    new PointF(r.X + r.Width * 0.36f, r.Y + r.Height * 0.52f)
+                };
+                PointF[] right =
+                {
+                    new PointF(r.X + r.Width * 0.56f, r.Y + r.Height * 0.38f),
+                    new PointF(r.X + r.Width * 0.72f, r.Y + r.Height * 0.38f),
+                    new PointF(r.X + r.Width * 0.64f, r.Y + r.Height * 0.52f)
+                };
+                g.FillPolygon(ink, left);
+                g.FillPolygon(ink, right);
+
+                float my = r.Y + r.Height * 0.66f;
+                PointF[] mouth =
+                {
+                    new PointF(r.X + r.Width * 0.30f, my),
+                    new PointF(r.X + r.Width * 0.40f, my + r.Height * 0.10f),
+                    new PointF(r.X + r.Width * 0.50f, my),
+                    new PointF(r.X + r.Width * 0.60f, my + r.Height * 0.10f),
+                    new PointF(r.X + r.Width * 0.70f, my)
+                };
+                using (Pen pen = new Pen(face, Math.Max(1.2f, r.Width * 0.05f)))
+                {
+                    pen.StartCap = LineCap.Round;
+                    pen.EndCap = LineCap.Round;
+                    g.DrawLines(pen, mouth);
+                }
+            }
+        }
+
+        public static void DrawMotif(Graphics g, Rectangle r, Color body, Color face)
+        {
+            if (Theme == ThemeKind.NewYear)
+            {
+                DrawSnowflake(g, r.X + r.Width / 2f, r.Y + r.Height / 2f,
+                    Math.Min(r.Width, r.Height) / 2f, body, Math.Max(1.4f, r.Width * 0.055f));
+            }
+            else if (Theme == ThemeKind.Halloween)
+            {
+                DrawPumpkin(g, r, body, face);
+            }
+        }
     }
 
     internal abstract class UiControl : Control
@@ -417,6 +608,14 @@ namespace Video2Gif
                 g.DrawPath(pen, path);
             }
 
+            if (Ui.Holiday && !Selected)
+            {
+                Rectangle motif = new Rectangle(
+                    Width - Ui.P(82), (Height - Ui.P(46)) / 2, Ui.P(46), Ui.P(40));
+                Ui.DrawMotif(g, motif,
+                    Color.FromArgb(46, Ui.Accent), Ui.Card);
+            }
+
             int iconSize = Ui.P(42);
             int iconX = Ui.P(20);
             int iconY = (Height - iconSize) / 2;
@@ -475,11 +674,29 @@ namespace Video2Gif
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             Rectangle r = new Rectangle(0, 0, Width - 1, Height - 1);
+            Color badge = Ui.Halloween ? Ui.AccentWash : Ui.Accent;
             using (GraphicsPath path = Ui.Round(r, Ui.P(10)))
-            using (SolidBrush brush = new SolidBrush(Ui.Accent))
+            using (SolidBrush brush = new SolidBrush(badge))
             {
                 g.FillPath(brush, path);
             }
+
+            if (Ui.NewYear)
+            {
+                Ui.DrawSnowflake(g, Width / 2f, Height / 2f,
+                    Math.Min(Width, Height) * 0.33f, Ui.OnAccent, Math.Max(1.6f, Ui.P(1.6)));
+                return;
+            }
+
+            if (Ui.Halloween)
+            {
+                Rectangle pumpkin = new Rectangle(
+                    (int)(Width * 0.18f), (int)(Height * 0.30f),
+                    (int)(Width * 0.64f), (int)(Height * 0.52f));
+                Ui.DrawPumpkin(g, pumpkin, Ui.Accent, badge);
+                return;
+            }
+
             PointF[] triangle = new PointF[]
             {
                 new PointF(Width * 0.40f, Height * 0.29f),

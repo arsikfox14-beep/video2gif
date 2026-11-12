@@ -24,7 +24,7 @@ namespace Video2Gif
 
         public MainForm()
         {
-            Ui.SetDark(LoadDarkSetting());
+            Ui.SetTheme(LoadThemeSetting());
             BuildUi();
             EnableDrop(this);
             FormClosing += delegate { Shutdown(); };
@@ -49,15 +49,15 @@ namespace Video2Gif
             }
         }
 
-        private static bool LoadDarkSetting()
+        private static string LoadThemeSetting()
         {
             try
             {
                 string path = SettingsPath;
-                if (!File.Exists(path)) return true;
-                return File.ReadAllText(path).Trim() != "light";
+                if (!File.Exists(path)) return "dark";
+                return File.ReadAllText(path).Trim().ToLowerInvariant();
             }
-            catch { return true; }
+            catch { return "dark"; }
         }
 
         private void SaveTheme()
@@ -66,19 +66,32 @@ namespace Video2Gif
             {
                 string path = SettingsPath;
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.WriteAllText(path, Ui.Dark ? "dark" : "light");
+                File.WriteAllText(path, Ui.ThemeName);
             }
             catch { }
         }
 
-        private void ToggleTheme()
+        private void ApplyThemeNow()
         {
-            Ui.SetDark(!Ui.Dark);
-            themeButton.Text = Ui.Dark ? "Светлая" : "Тёмная";
             Ui.ApplyTheme(this);
             ApplyTitleBarTheme();
-            SaveTheme();
             Invalidate(true);
+        }
+
+        private void ApplyThemeChoice(string name)
+        {
+            Ui.SetTheme(name);
+            SaveTheme();
+            ApplyThemeNow();
+        }
+
+        private void OpenSettings()
+        {
+            using (SettingsForm dialog = new SettingsForm(ApplyThemeChoice))
+            {
+                dialog.ShowDialog(this);
+            }
+            ApplyThemeNow();
         }
 
         [DllImport("dwmapi.dll")]

@@ -6,6 +6,146 @@ using System.Windows.Forms;
 
 namespace Video2Gif
 {
+    internal enum IconKind
+    {
+        Gamepad,
+        Download,
+        Settings
+    }
+
+    internal sealed class IconButton : UiControl
+    {
+        public readonly IconKind Kind;
+
+        private bool hover;
+        private bool down;
+
+        public IconButton(IconKind kind)
+        {
+            Kind = kind;
+            TabStop = false;
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            hover = true;
+            Invalidate();
+            base.OnMouseEnter(e);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            hover = false;
+            down = false;
+            Invalidate();
+            base.OnMouseLeave(e);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            down = true;
+            Invalidate();
+            base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            down = false;
+            Invalidate();
+            base.OnMouseUp(e);
+        }
+
+        protected override void OnEnabledChanged(EventArgs e)
+        {
+            Cursor = Enabled ? Cursors.Hand : Cursors.Default;
+            Invalidate();
+            base.OnEnabledChanged(e);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            Rectangle r = new Rectangle(0, 0, Width - 1, Height - 1);
+            Color fill = !Enabled ? Ui.Track : (hover ? Ui.Track : Ui.Card);
+            Color border = !Enabled ? Ui.Border : (hover ? Ui.BorderStrong : Ui.Border);
+            Color ink = !Enabled ? Ui.Faint : (hover ? Ui.Text : Ui.Muted);
+            if (down && Enabled) fill = Ui.AccentSoft;
+
+            Ui.FillRound(g, r, Ui.P(9), fill);
+            Ui.StrokeRound(g, r, Ui.P(9), border, 1f);
+
+            float cx = Width / 2f;
+            float cy = Height / 2f;
+            float unit = Math.Min(Width, Height) * 0.30f;
+
+            using (Pen pen = new Pen(ink, Math.Max(1.4f, Ui.P(1.5))))
+            {
+                pen.LineJoin = LineJoin.Round;
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+
+                if (Kind == IconKind.Gamepad)
+                {
+                    float w = unit * 1.65f;
+                    float h = unit * 0.95f;
+                    Rectangle body = Rectangle.Round(
+                        new RectangleF(cx - w / 2f, cy - h / 2f, w, h));
+                    using (GraphicsPath path = Ui.Round(body, (int)Math.Max(3, h / 2f)))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+
+                    float dx = unit * 0.35f;
+                    g.DrawLine(pen, cx - dx - unit * 0.16f, cy, cx - dx + unit * 0.16f, cy);
+                    g.DrawLine(pen, cx - dx, cy - unit * 0.16f, cx - dx, cy + unit * 0.16f);
+
+                    float bx = cx + dx;
+                    g.DrawEllipse(pen, bx + unit * 0.02f, cy - unit * 0.22f, unit * 0.16f, unit * 0.16f);
+                    g.DrawEllipse(pen, bx + unit * 0.26f, cy + unit * 0.06f, unit * 0.16f, unit * 0.16f);
+                }
+                else if (Kind == IconKind.Download)
+                {
+                    float top = cy - unit * 0.85f;
+                    float bottom = cy + unit * 0.42f;
+                    g.DrawLine(pen, cx, top, cx, bottom);
+                    g.DrawLine(pen, cx - unit * 0.52f, bottom - unit * 0.44f, cx, bottom);
+                    g.DrawLine(pen, cx + unit * 0.52f, bottom - unit * 0.44f, cx, bottom);
+
+                    float tray = unit * 0.62f;
+                    float trayY = cy + unit * 0.85f;
+                    g.DrawLine(pen, cx - tray, trayY - unit * 0.28f, cx - tray, trayY);
+                    g.DrawLine(pen, cx - tray, trayY, cx + tray, trayY);
+                    g.DrawLine(pen, cx + tray, trayY - unit * 0.28f, cx + tray, trayY);
+                }
+                else
+                {
+                    float outer = unit * 0.98f;
+                    float inner = unit * 0.70f;
+                    PointF[] gear = new PointF[32];
+                    for (int i = 0; i < 32; i++)
+                    {
+                        double a = -Math.PI / 2 + Math.PI * 2 / 32 * i;
+                        float radius = (i % 4 < 2) ? outer : inner;
+                        gear[i] = new PointF(
+                            cx + (float)(Math.Cos(a) * radius),
+                            cy + (float)(Math.Sin(a) * radius));
+                    }
+                    using (SolidBrush inkBrush = new SolidBrush(ink))
+                    {
+                        g.FillPolygon(inkBrush, gear);
+                    }
+                    float hole = unit * 0.30f;
+                    using (SolidBrush holeBrush = new SolidBrush(fill))
+                    {
+                        g.FillEllipse(holeBrush, cx - hole, cy - hole, hole * 2, hole * 2);
+                    }
+                }
+            }
+        }
+    }
+
     internal sealed class ToggleRow : UiControl
     {
         private bool isChecked;

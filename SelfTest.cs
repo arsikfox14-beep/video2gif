@@ -115,6 +115,23 @@ namespace Video2Gif
                 Check("download path resolve",
                     MediaDownloader.ResolvePath(@"C:\NO-SUCH~1\probe song.mp3", work) == probe);
 
+                Ui.SetTheme("light");
+                Color lightBg = Ui.Bg;
+                Check("theme light", !Ui.Dark && !Ui.Holiday && Ui.ThemeName == "light");
+                Ui.SetTheme("dark");
+                Check("theme dark",
+                    Ui.Dark && !Ui.Holiday && Ui.ThemeName == "dark" && Ui.Bg != lightBg);
+                Ui.SetTheme("newyear");
+                Color newYearAccent = Ui.Accent;
+                Check("theme new year",
+                    Ui.Dark && Ui.NewYear && Ui.ThemeName == "newyear" && newYearAccent != Ui.Bg);
+                Ui.SetTheme("halloween");
+                Check("theme halloween",
+                    Ui.Dark && Ui.Halloween && Ui.ThemeName == "halloween" && Ui.Accent != newYearAccent);
+                Ui.SetTheme("unknown");
+                Check("theme unknown falls back to dark", Ui.ThemeName == "dark");
+                Ui.SetDark(true);
+
                 string sample = Path.Combine(work, "sample.mp4");
                 string genOut;
                 int genCode = RunProcess(ffmpeg,
@@ -224,7 +241,8 @@ namespace Video2Gif
                         form.StartPosition = FormStartPosition.Manual;
                         form.Location = new Point(-4000, -4000);
                         form.Show();
-                        if (Ui.Dark) Invoke(form, "ToggleTheme");
+                        Ui.SetTheme("light");
+                        Invoke(form, "ApplyThemeNow");
                         WaitUntil(delegate { return GetField(form, "ffmpegReady") is bool && (bool)GetField(form, "ffmpegReady"); }, 6000);
                         Invoke(form, "LoadVideo", sample);
                         WaitUntil(delegate { return GetField(form, "info") != null; }, 10000);
@@ -240,7 +258,19 @@ namespace Video2Gif
                         FlatInput fpsBox = GetField(form, "fpsInput") as FlatInput;
                         Check("ui fps default 30", fpsBox != null && fpsBox.Value == "30");
                         Check("ui colors slider removed", GetField(form, "colorsSlider") == null);
-                        Check("ui gamepad button", GetField(form, "gameButton") is GamepadButton);
+                        IconButton game = GetField(form, "gameButton") as IconButton;
+                        IconButton download = GetField(form, "downloadsButton") as IconButton;
+                        IconButton settings = GetField(form, "settingsButton") as IconButton;
+                        Check("ui gamepad button",
+                            game != null && game.Kind == IconKind.Gamepad);
+                        Check("ui download icon button",
+                            download != null && download.Kind == IconKind.Download);
+                        Check("ui settings icon button",
+                            settings != null && settings.Kind == IconKind.Settings);
+                        Check("ui header buttons compact",
+                            game != null && download != null && settings != null &&
+                            game.Width <= Ui.P(34) && download.Width <= Ui.P(34) &&
+                            settings.Width <= Ui.P(34));
 
                         Invoke(form, "FinishSuccess", fast);
                         Application.DoEvents();
@@ -248,11 +278,32 @@ namespace Video2Gif
                         SaveShot(form, resultShot);
                         Check("ui result screenshot", File.Exists(resultShot) && new FileInfo(resultShot).Length > 2000);
 
-                        Invoke(form, "ToggleTheme");
+                        Ui.SetTheme("dark");
+                        Invoke(form, "ApplyThemeNow");
                         Application.DoEvents();
                         string darkShot = Path.Combine(work, "ui-dark.png");
                         SaveShot(form, darkShot);
                         Check("ui dark screenshot", File.Exists(darkShot) && new FileInfo(darkShot).Length > 2000);
+
+                        Ui.SetTheme("newyear");
+                        Invoke(form, "ApplyThemeNow");
+                        Application.DoEvents();
+                        string newYearShot = Path.Combine(work, "ui-newyear.png");
+                        SaveShot(form, newYearShot);
+                        Check("ui new year screenshot",
+                            File.Exists(newYearShot) && new FileInfo(newYearShot).Length > 2000);
+
+                        Ui.SetTheme("halloween");
+                        Invoke(form, "ApplyThemeNow");
+                        Application.DoEvents();
+                        string halloweenShot = Path.Combine(work, "ui-halloween.png");
+                        SaveShot(form, halloweenShot);
+                        Check("ui halloween screenshot",
+                            File.Exists(halloweenShot) && new FileInfo(halloweenShot).Length > 2000);
+
+                        Ui.SetTheme("dark");
+                        Invoke(form, "ApplyThemeNow");
+                        Application.DoEvents();
 
                         Invoke(form, "ShowProgress", "Строим палитру", "2 с · 30 fps · 320 px");
                         SetField(form, "busy", true);
@@ -303,7 +354,8 @@ namespace Video2Gif
                         Check("ui video fields restored",
                             uiDuration != null && uiFps != null && uiDuration.Enabled && uiFps.Enabled);
 
-                        if (!Ui.Dark) Invoke(form, "ToggleTheme");
+                        if (!Ui.Dark) Ui.SetTheme("dark");
+                        Invoke(form, "ApplyThemeNow");
                         form.Close();
                     }
                     Line("  ui.png: " + Fmt.Size(new FileInfo(ui).Length));
@@ -312,6 +364,58 @@ namespace Video2Gif
                 {
                     Check("ui screenshot", false);
                     Line("  ui error: " + ex.Message);
+                }
+
+                string settingsShot = Path.Combine(work, "ui-settings.png");
+                try
+                {
+                    Ui.SetTheme("dark");
+                    using (SettingsForm dialog = new SettingsForm(
+                        delegate(string name) { Ui.SetTheme(name); }))
+                    {
+                        dialog.StartPosition = FormStartPosition.Manual;
+                        dialog.Location = new Point(-4000, -4000);
+                        dialog.Show();
+                        Application.DoEvents();
+                        SaveShot(dialog, settingsShot);
+                        Check("settings screenshot",
+                            File.Exists(settingsShot) && new FileInfo(settingsShot).Length > 2000);
+
+                        ThemeTile newYearTile = GetField(dialog, "newYearTile") as ThemeTile;
+                        ThemeTile halloweenTile = GetField(dialog, "halloweenTile") as ThemeTile;
+                        ThemeTile darkTile = GetField(dialog, "darkTile") as ThemeTile;
+                        Check("settings theme tiles",
+                            newYearTile != null && newYearTile.ThemeKey == "newyear" &&
+                            halloweenTile != null && halloweenTile.ThemeKey == "halloween" &&
+                            darkTile != null && darkTile.Active);
+
+                        newYearTile.Pick();
+                        Application.DoEvents();
+                        Check("settings choose new year",
+                            Ui.ThemeName == "newyear" && newYearTile.Active && !darkTile.Active);
+
+                        string newYearSettings = Path.Combine(work, "ui-settings-newyear.png");
+                        SaveShot(dialog, newYearSettings);
+                        Check("settings new year screenshot",
+                            File.Exists(newYearSettings) && new FileInfo(newYearSettings).Length > 2000);
+
+                        halloweenTile.Pick();
+                        Application.DoEvents();
+                        string halloweenSettings = Path.Combine(work, "ui-settings-halloween.png");
+                        SaveShot(dialog, halloweenSettings);
+                        Check("settings halloween screenshot",
+                            File.Exists(halloweenSettings) && new FileInfo(halloweenSettings).Length > 2000);
+
+                        darkTile.Pick();
+                        Application.DoEvents();
+                        dialog.Close();
+                    }
+                    Ui.SetDark(true);
+                }
+                catch (Exception ex)
+                {
+                    Check("settings screenshot", false);
+                    Line("  settings error: " + ex.Message);
                 }
 
                 Check("tiktok url detect",

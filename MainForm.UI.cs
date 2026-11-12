@@ -25,10 +25,10 @@ namespace Video2Gif
         private ToggleRow fastToggle;
         private PillButton convertButton;
         private PillButton cancelButton;
-        private PillButton themeButton;
-        private PillButton downloadsButton;
-        private GamepadButton gameButton;
-        private ToolTip gameTip;
+        private IconButton downloadsButton;
+        private IconButton settingsButton;
+        private IconButton gameButton;
+        private ToolTip headerTip;
 
         private Panel progressView;
         private Label percentLabel;
@@ -93,31 +93,27 @@ namespace Video2Gif
             Controls.Add(Lbl("видео и картинки → GIF",
                 Ui.Small, Ui.Muted, 71, 36, 300, 18));
             Controls.Add(Lbl("v" + Program.Version + " · локально", Ui.Tiny, Ui.Faint,
-                388, 24, 262, 18, ContentAlignment.MiddleRight));
+                520, 24, 296, 18, ContentAlignment.MiddleRight));
 
-            gameButton = new GamepadButton();
-            gameButton.SetBounds(Ui.P(660), Ui.P(16), Ui.P(44), Ui.P(32));
+            gameButton = new IconButton(IconKind.Gamepad);
+            gameButton.SetBounds(Ui.P(824), Ui.P(16), Ui.P(32), Ui.P(32));
             gameButton.Click += delegate { OpenGame(); };
             Controls.Add(gameButton);
 
-            gameTip = new ToolTip();
-            gameTip.SetToolTip(gameButton, "Играть · Змейка");
-
-            downloadsButton = new PillButton();
-            downloadsButton.Ghost = true;
-            downloadsButton.Font = Ui.Small;
-            downloadsButton.Text = "Скачать";
-            downloadsButton.SetBounds(Ui.P(712), Ui.P(16), Ui.P(104), Ui.P(32));
+            downloadsButton = new IconButton(IconKind.Download);
+            downloadsButton.SetBounds(Ui.P(864), Ui.P(16), Ui.P(32), Ui.P(32));
             downloadsButton.Click += delegate { ShowDownloadMenu(); };
             Controls.Add(downloadsButton);
 
-            themeButton = new PillButton();
-            themeButton.Ghost = true;
-            themeButton.Font = Ui.Small;
-            themeButton.Text = Ui.Dark ? "Светлая" : "Тёмная";
-            themeButton.SetBounds(Ui.P(832), Ui.P(16), Ui.P(104), Ui.P(32));
-            themeButton.Click += delegate { ToggleTheme(); };
-            Controls.Add(themeButton);
+            settingsButton = new IconButton(IconKind.Settings);
+            settingsButton.SetBounds(Ui.P(904), Ui.P(16), Ui.P(32), Ui.P(32));
+            settingsButton.Click += delegate { OpenSettings(); };
+            Controls.Add(settingsButton);
+
+            headerTip = new ToolTip();
+            headerTip.SetToolTip(gameButton, "Играть · Змейка");
+            headerTip.SetToolTip(downloadsButton, "Скачать видео, музыку или TikTok");
+            headerTip.SetToolTip(settingsButton, "Настройки · тема оформления");
 
             Controls.Add(Lbl("by DeepSeek v4.1 flash & arsikfox14 & dismasdismavich", Ui.Tiny, Ui.Faint,
                 24, 560, 912, 14, ContentAlignment.MiddleRight));
@@ -394,6 +390,13 @@ namespace Video2Gif
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            if (Ui.Holiday)
+            {
+                Rectangle motif = new Rectangle(
+                    Width - Ui.P(78), Ui.P(24), Ui.P(46), Ui.P(42));
+                Ui.DrawMotif(g, motif, Color.FromArgb(52, Ui.Accent), Ui.Card);
+            }
 
             int cx = Width / 2;
             int top = Ui.P(74);
