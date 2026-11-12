@@ -130,6 +130,8 @@ namespace Video2Gif
                     Ui.Dark && Ui.Halloween && Ui.ThemeName == "halloween" && Ui.Accent != newYearAccent);
                 Ui.SetTheme("unknown");
                 Check("theme unknown falls back to dark", Ui.ThemeName == "dark");
+                Check("theme title bar colorref",
+                    Ui.ColorRef(Color.FromArgb(1, 2, 3)) == 0x030201);
                 Ui.SetDark(true);
 
                 string sample = Path.Combine(work, "sample.mp4");
@@ -244,6 +246,26 @@ namespace Video2Gif
                         Ui.SetTheme("light");
                         Invoke(form, "ApplyThemeNow");
                         WaitUntil(delegate { return GetField(form, "ffmpegReady") is bool && (bool)GetField(form, "ffmpegReady"); }, 6000);
+
+                        Ui.SetTheme("newyear");
+                        Invoke(form, "ApplyThemeNow");
+                        Application.DoEvents();
+                        string emptyNewYear = Path.Combine(work, "ui-empty-newyear.png");
+                        SaveShot(form, emptyNewYear);
+                        Check("ui empty new year screenshot",
+                            File.Exists(emptyNewYear) && new FileInfo(emptyNewYear).Length > 2000);
+
+                        Ui.SetTheme("halloween");
+                        Invoke(form, "ApplyThemeNow");
+                        Application.DoEvents();
+                        string emptyHalloween = Path.Combine(work, "ui-empty-halloween.png");
+                        SaveShot(form, emptyHalloween);
+                        Check("ui empty halloween screenshot",
+                            File.Exists(emptyHalloween) && new FileInfo(emptyHalloween).Length > 2000);
+
+                        Ui.SetTheme("light");
+                        Invoke(form, "ApplyThemeNow");
+                        Application.DoEvents();
                         Invoke(form, "LoadVideo", sample);
                         WaitUntil(delegate { return GetField(form, "info") != null; }, 10000);
                         SaveShot(form, ui);
@@ -261,8 +283,8 @@ namespace Video2Gif
                         IconButton game = GetField(form, "gameButton") as IconButton;
                         IconButton download = GetField(form, "downloadsButton") as IconButton;
                         IconButton settings = GetField(form, "settingsButton") as IconButton;
-                        Check("ui gamepad button",
-                            game != null && game.Kind == IconKind.Gamepad);
+                        Check("ui mouse button",
+                            game != null && game.Kind == IconKind.Mouse);
                         Check("ui download icon button",
                             download != null && download.Kind == IconKind.Download);
                         Check("ui settings icon button",

@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -94,15 +93,10 @@ namespace Video2Gif
             ApplyThemeNow();
         }
 
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
         private void ApplyTitleBarTheme()
         {
             if (!IsHandleCreated) return;
-            int value = Ui.Dark ? 1 : 0;
-            try { DwmSetWindowAttribute(Handle, 20, ref value, sizeof(int)); } catch { }
-            try { DwmSetWindowAttribute(Handle, 19, ref value, sizeof(int)); } catch { }
+            Ui.ApplyTitleBar(Handle);
         }
 
         protected override void OnShown(EventArgs e)

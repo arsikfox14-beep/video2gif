@@ -95,7 +95,7 @@ namespace Video2Gif
             Controls.Add(Lbl("v" + Program.Version + " · локально", Ui.Tiny, Ui.Faint,
                 520, 24, 296, 18, ContentAlignment.MiddleRight));
 
-            gameButton = new IconButton(IconKind.Gamepad);
+            gameButton = new IconButton(IconKind.Mouse);
             gameButton.SetBounds(Ui.P(824), Ui.P(16), Ui.P(32), Ui.P(32));
             gameButton.Click += delegate { OpenGame(); };
             Controls.Add(gameButton);
@@ -393,9 +393,33 @@ namespace Video2Gif
 
             if (Ui.Holiday)
             {
-                Rectangle motif = new Rectangle(
-                    Width - Ui.P(78), Ui.P(24), Ui.P(46), Ui.P(42));
-                Ui.DrawMotif(g, motif, Color.FromArgb(52, Ui.Accent), Ui.Card);
+                if (Ui.NewYear)
+                {
+                    Ui.DrawSnowflake(g, Width - Ui.P(28), Ui.P(28), Ui.P(20),
+                        Color.FromArgb(58, Ui.Accent), Math.Max(1.2f, Ui.P(1.5)));
+                    Ui.DrawSnowflake(g, Ui.P(28), Ui.P(46), Ui.P(12),
+                        Color.FromArgb(46, Ui.Accent), Math.Max(1.1f, Ui.P(1.3)));
+                    Ui.DrawSnowflake(g, Width - Ui.P(72), Ui.P(88), Ui.P(9),
+                        Color.FromArgb(40, Ui.Accent), Math.Max(1f, Ui.P(1.2)));
+                    Ui.DrawSnowflake(g, Width - Ui.P(34), Ui.P(142), Ui.P(8),
+                        Color.FromArgb(34, Ui.Accent), Math.Max(1f, Ui.P(1.1)));
+                }
+                else
+                {
+                    Rectangle pumpkin = new Rectangle(
+                        Width - Ui.P(62), Ui.P(20), Ui.P(38), Ui.P(32));
+                    Ui.DrawPumpkin(g, pumpkin, Color.FromArgb(60, Ui.Accent), Ui.Card);
+                    Ui.DrawLeaf(g, Ui.P(26), Ui.P(58), Ui.P(20),
+                        Color.FromArgb(80, Ui.Accent), -28f);
+                    Ui.DrawLeaf(g, Width - Ui.P(92), Ui.P(74), Ui.P(15),
+                        Color.FromArgb(66, Ui.Accent), 40f);
+                    Ui.DrawLeaf(g, Width - Ui.P(30), Ui.P(126), Ui.P(12),
+                        Color.FromArgb(54, Ui.Accent), 18f);
+                    Ui.DrawLeaf(g, Ui.P(58), Ui.P(24), Ui.P(11),
+                        Color.FromArgb(46, Ui.Accent), 56f);
+                    Ui.DrawLeaf(g, Width - Ui.P(26), Ui.P(210), Ui.P(10),
+                        Color.FromArgb(42, Ui.Accent), -64f);
+                }
             }
 
             int cx = Width / 2;

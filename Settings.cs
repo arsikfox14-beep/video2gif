@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace Video2Gif
@@ -222,15 +221,10 @@ namespace Video2Gif
             halloweenTile.Active = current == "halloween";
         }
 
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
         private void ApplyTitleBar()
         {
             if (!IsHandleCreated) return;
-            int value = Ui.Dark ? 1 : 0;
-            try { DwmSetWindowAttribute(Handle, 20, ref value, sizeof(int)); } catch { }
-            try { DwmSetWindowAttribute(Handle, 19, ref value, sizeof(int)); } catch { }
+            Ui.ApplyTitleBar(Handle);
         }
 
         protected override void OnHandleCreated(EventArgs e)

@@ -8,7 +8,7 @@ namespace Video2Gif
 {
     internal enum IconKind
     {
-        Gamepad,
+        Mouse,
         Download,
         Settings
     }
@@ -86,24 +86,21 @@ namespace Video2Gif
                 pen.StartCap = LineCap.Round;
                 pen.EndCap = LineCap.Round;
 
-                if (Kind == IconKind.Gamepad)
+                if (Kind == IconKind.Mouse)
                 {
-                    float w = unit * 1.65f;
-                    float h = unit * 0.95f;
+                    float w = unit * 1.02f;
+                    float h = unit * 1.58f;
                     Rectangle body = Rectangle.Round(
                         new RectangleF(cx - w / 2f, cy - h / 2f, w, h));
-                    using (GraphicsPath path = Ui.Round(body, (int)Math.Max(3, h / 2f)))
+                    using (GraphicsPath path = Ui.Round(body, (int)Math.Max(4, w / 2f)))
                     {
                         g.DrawPath(pen, path);
                     }
 
-                    float dx = unit * 0.35f;
-                    g.DrawLine(pen, cx - dx - unit * 0.16f, cy, cx - dx + unit * 0.16f, cy);
-                    g.DrawLine(pen, cx - dx, cy - unit * 0.16f, cx - dx, cy + unit * 0.16f);
-
-                    float bx = cx + dx;
-                    g.DrawEllipse(pen, bx + unit * 0.02f, cy - unit * 0.22f, unit * 0.16f, unit * 0.16f);
-                    g.DrawEllipse(pen, bx + unit * 0.26f, cy + unit * 0.06f, unit * 0.16f, unit * 0.16f);
+                    float top = cy - h / 2f;
+                    g.DrawLine(pen, cx, top + 1, cx, cy - unit * 0.06f);
+                    g.DrawLine(pen, cx - unit * 0.18f, top + h * 0.30f,
+                        cx + unit * 0.18f, top + h * 0.30f);
                 }
                 else if (Kind == IconKind.Download)
                 {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace Video2Gif
@@ -44,6 +45,30 @@ namespace Video2Gif
                 if (Theme == ThemeKind.Halloween) return "halloween";
                 return "dark";
             }
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        public static int ColorRef(Color color)
+        {
+            return color.R | (color.G << 8) | (color.B << 16);
+        }
+
+        public static void ApplyTitleBar(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            int dark = Dark ? 1 : 0;
+            TryAttribute(hwnd, 20, dark);
+            TryAttribute(hwnd, 19, dark);
+            TryAttribute(hwnd, 35, ColorRef(Bg));
+            TryAttribute(hwnd, 36, ColorRef(Text));
+            TryAttribute(hwnd, 34, ColorRef(Border));
+        }
+
+        private static void TryAttribute(IntPtr hwnd, int attribute, int value)
+        {
+            try { DwmSetWindowAttribute(hwnd, attribute, ref value, sizeof(int)); } catch { }
         }
 
         public static Color Bg;
@@ -322,6 +347,51 @@ namespace Video2Gif
                     g.DrawLine(pen, bx, by,
                         bx + (float)(Math.Cos(a2) * branch), by + (float)(Math.Sin(a2) * branch));
                 }
+            }
+        }
+
+        public static void DrawLeaf(Graphics g, float cx, float cy, float size, Color color, float angle)
+        {
+            GraphicsState state = g.Save();
+            try
+            {
+                g.TranslateTransform(cx, cy);
+                g.RotateTransform(angle);
+
+                float w = size * 0.62f;
+                float h = size;
+                using (GraphicsPath path = new GraphicsPath())
+                {
+                    path.AddBezier(0, h / 2f, -w / 2f, h * 0.12f, -w / 2f, -h * 0.32f, 0, -h / 2f);
+                    path.AddBezier(0, -h / 2f, w / 2f, -h * 0.32f, w / 2f, h * 0.12f, 0, h / 2f);
+                    path.CloseFigure();
+
+                    using (SolidBrush brush = new SolidBrush(color))
+                    {
+                        g.FillPath(brush, path);
+                    }
+
+                    int veinAlpha = Math.Min(255, color.A + 34);
+                    using (Pen pen = new Pen(Color.FromArgb(veinAlpha, color), Math.Max(1f, size * 0.045f)))
+                    {
+                        pen.StartCap = LineCap.Round;
+                        pen.EndCap = LineCap.Round;
+                        g.DrawLine(pen, 0, h * 0.42f, 0, -h * 0.42f);
+                        g.DrawLine(pen, 0, 0, w * 0.30f, -h * 0.18f);
+                        g.DrawLine(pen, 0, 0, -w * 0.30f, -h * 0.18f);
+                    }
+                }
+
+                using (Pen stem = new Pen(color, Math.Max(1f, size * 0.05f)))
+                {
+                    stem.StartCap = LineCap.Round;
+                    stem.EndCap = LineCap.Round;
+                    g.DrawLine(stem, 0, h * 0.45f, size * 0.10f, h * 0.64f);
+                }
+            }
+            finally
+            {
+                g.Restore(state);
             }
         }
 
@@ -610,10 +680,36 @@ namespace Video2Gif
 
             if (Ui.Holiday && !Selected)
             {
-                Rectangle motif = new Rectangle(
-                    Width - Ui.P(82), (Height - Ui.P(46)) / 2, Ui.P(46), Ui.P(40));
-                Ui.DrawMotif(g, motif,
-                    Color.FromArgb(46, Ui.Accent), Ui.Card);
+                if (Ui.NewYear)
+                {
+                    int x = Width - Ui.P(18);
+                    Ui.DrawSnowflake(g, x - Ui.P(34), Height / 2f, Ui.P(22),
+                        Color.FromArgb(58, Ui.Accent), Math.Max(1.2f, Ui.P(1.6)));
+                    Ui.DrawSnowflake(g, x - Ui.P(128), Height * 0.30f, Ui.P(12),
+                        Color.FromArgb(46, Ui.Accent), Math.Max(1.1f, Ui.P(1.4)));
+                    Ui.DrawSnowflake(g, x - Ui.P(196), Height * 0.74f, Ui.P(9),
+                        Color.FromArgb(38, Ui.Accent), Math.Max(1f, Ui.P(1.2)));
+                    Ui.DrawSnowflake(g, x - Ui.P(74), Ui.P(15), Ui.P(7),
+                        Color.FromArgb(34, Ui.Accent), Math.Max(1f, Ui.P(1.1)));
+                }
+                else
+                {
+                    Rectangle pumpkin = new Rectangle(
+                        Width - Ui.P(84), (Height - Ui.P(46)) / 2, Ui.P(46), Ui.P(40));
+                    Ui.DrawPumpkin(g, pumpkin, Color.FromArgb(64, Ui.Accent), Ui.Card);
+                    Ui.DrawLeaf(g, Width - Ui.P(122), Height * 0.28f, Ui.P(24),
+                        Color.FromArgb(92, Ui.Accent), 28f);
+                    Ui.DrawLeaf(g, Width - Ui.P(152), Height * 0.72f, Ui.P(18),
+                        Color.FromArgb(74, Ui.Accent), -34f);
+                    Ui.DrawLeaf(g, Width - Ui.P(204), Ui.P(17), Ui.P(15),
+                        Color.FromArgb(62, Ui.Accent), 52f);
+                    Ui.DrawLeaf(g, Width - Ui.P(56), Ui.P(22), Ui.P(12),
+                        Color.FromArgb(56, Ui.Accent), -18f);
+                    Ui.DrawLeaf(g, Width - Ui.P(100), Height * 0.88f, Ui.P(14),
+                        Color.FromArgb(60, Ui.Accent), -108f);
+                    Ui.DrawLeaf(g, Width - Ui.P(254), Height * 0.20f, Ui.P(11),
+                        Color.FromArgb(44, Ui.Accent), 68f);
+                }
             }
 
             int iconSize = Ui.P(42);
