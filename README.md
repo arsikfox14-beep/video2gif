@@ -11,6 +11,7 @@ Spotify и другими сайтами.
 Права администратора не требуются.
 
 Discord: https://discord.gg/yMaS9HbjHV
+Donate: https://www.donationalerts.com/r/arsikfox16
 
 ## Скриншоты
 
