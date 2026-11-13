@@ -21,6 +21,9 @@ namespace Video2Gif
         public static bool Dark;
         public static ThemeKind Theme = ThemeKind.Dark;
 
+        /// <summary>Тема выбирается автоматически по дате Windows.</summary>
+        public static bool AutoTheme;
+
         public static bool Holiday
         {
             get { return Theme == ThemeKind.NewYear || Theme == ThemeKind.Halloween; }
@@ -98,6 +101,7 @@ namespace Video2Gif
         {
             ThemeKind kind = ThemeKind.Dark;
             string value = (name ?? "").Trim().ToLowerInvariant();
+            if (value == "auto") { SetThemeAuto(DateTime.Now); return; }
             if (value == "light") kind = ThemeKind.Light;
             else if (value == "newyear" || value == "new-year" || value == "ny") kind = ThemeKind.NewYear;
             else if (value == "halloween" || value == "spooky") kind = ThemeKind.Halloween;
@@ -105,6 +109,41 @@ namespace Video2Gif
         }
 
         public static void SetTheme(ThemeKind kind)
+        {
+            AutoTheme = false;
+            ApplyTheme(kind);
+        }
+
+        public static void SetThemeAuto(DateTime now)
+        {
+            ApplyTheme(SeasonalTheme(now));
+            AutoTheme = true;
+        }
+
+        /// <summary>Переключает сезонную тему, если включён авторежим.</summary>
+        public static bool RefreshAutoTheme(DateTime now)
+        {
+            if (!AutoTheme) return false;
+            ThemeKind kind = SeasonalTheme(now);
+            if (kind == Theme) return false;
+            ApplyTheme(kind);
+            return true;
+        }
+
+        /// <summary>
+        /// Хэллоуин — с 1 октября по 1 ноября, Новый год — с 1 декабря
+        /// по 1 января (границы включительно). В остальное время — тёмная.
+        /// </summary>
+        public static ThemeKind SeasonalTheme(DateTime date)
+        {
+            if (date.Month == 10 || (date.Month == 11 && date.Day == 1))
+                return ThemeKind.Halloween;
+            if (date.Month == 12 || (date.Month == 1 && date.Day == 1))
+                return ThemeKind.NewYear;
+            return ThemeKind.Dark;
+        }
+
+        private static void ApplyTheme(ThemeKind kind)
         {
             Theme = kind;
             Dark = kind != ThemeKind.Light;

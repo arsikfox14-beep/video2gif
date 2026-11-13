@@ -47,7 +47,32 @@ namespace Video2Gif
                 Check("yt-dlp version", ytCode == 0 && ytVersion.Trim().Length > 0);
                 Line("  " + FirstLine(ytVersion));
 
-                string spotifyJson = "{\"props\":{\"pageProps\":{\"state\":{\"data\":{\"entity\":{\"type\":\"playlist\",\"trackList\":[" +
+                string mirrorVideo = "{\"code\":0,\"msg\":\"success\",\"data\":{\"id\":\"7320244041688419590\"," +
+                    "\"title\":\"Clip\",\"author\":{\"unique_id\":\"ayrastarr\"}," +
+                    "\"hdplay\":\"https://cdn.test/video.mp4\",\"play\":\"https://cdn.test/sd.mp4\"}}";
+                TikTokInfo mirror = TikTok.ParseMirrorJson(mirrorVideo, "7320244041688419590");
+                Check("tiktok mirror video",
+                    !mirror.IsPhotoPost &&
+                    mirror.Author == "ayrastarr" &&
+                    mirror.VideoUrl == "https://cdn.test/video.mp4" &&
+                    mirror.SuggestedName == "tiktok_ayrastarr_7320244041688419590.mp4");
+
+                string mirrorPhoto = "{\"code\":0,\"msg\":\"success\",\"data\":{\"id\":\"7000000000000000001\"," +
+                    "\"title\":\"Photos\",\"author\":{\"unique_id\":\"cat\"}," +
+                    "\"images\":[\"https://cdn.test/1.jpeg\",\"//cdn.test/2.jpeg\"]}}";
+                TikTokInfo mirrorPhotos = TikTok.ParseMirrorJson(mirrorPhoto, "7000000000000000001");
+                Check("tiktok mirror photos",
+                    mirrorPhotos.IsPhotoPost &&
+                    mirrorPhotos.PhotoUrls.Count == 2 &&
+                    mirrorPhotos.PhotoUrls[1] == "https://cdn.test/2.jpeg" &&
+                    mirrorPhotos.SuggestedName == "tiktok_cat_7000000000000000001");
+
+                bool mirrorError = false;
+                try { TikTok.ParseMirrorJson("{\"code\":-1,\"msg\":\"Url parsing is failed!\"}", "1"); }
+                catch (TikTokException) { mirrorError = true; }
+                Check("tiktok mirror error", mirrorError);
+
+                string spotifyJson = "{\"props\":{\"pageProps\":{\"state\":{\"data\":{\"entity\":{\"type\":\"playlist\",\"name\":\"Road Trip\",\"trackList\":[" +
                     "{\"title\":\"Song One\",\"subtitle\":\"Artist A\",\"duration\":1000,\"isPlayable\":true}," +
                     "{\"title\":\"Song Two\",\"subtitle\":\"Artist B\",\"duration\":2000,\"isPlayable\":false}]}}}}}}";
                 string spotifyHtml = "<script id=\"__NEXT_DATA__\" type=\"application/json\">" +
@@ -56,6 +81,20 @@ namespace Video2Gif
                 Check("spotify link parse", spotifyTracks.Count == 1 &&
                     spotifyTracks[0].Title == "Song One" &&
                     spotifyTracks[0].Query == "Artist A Song One");
+
+                SpotifySelection spotifySelection = SpotifyLinks.ParseSelection(spotifyHtml);
+                Check("spotify playlist folder",
+                    spotifySelection.CollectionName == "Road Trip" &&
+                    spotifySelection.Tracks.Count == 1);
+
+                string spotifyTrackJson = "{\"props\":{\"pageProps\":{\"state\":{\"data\":{\"entity\":{\"type\":\"track\",\"name\":\"Song\",\"duration\":1000,\"isPlayable\":true,\"artists\":[{\"name\":\"Artist\"}]}}}}}}";
+                string spotifyTrackHtml = "<script id=\"__NEXT_DATA__\" type=\"application/json\">" +
+                    spotifyTrackJson + "</script>";
+                SpotifySelection spotifySingle = SpotifyLinks.ParseSelection(spotifyTrackHtml);
+                Check("spotify track no folder",
+                    spotifySingle.CollectionName.Length == 0 &&
+                    spotifySingle.Tracks.Count == 1 &&
+                    spotifySingle.Tracks[0].Query == "Artist Song");
 
                 MediaTrack timed = new MediaTrack();
                 timed.DurationMs = 213000;
@@ -114,6 +153,48 @@ namespace Video2Gif
                 File.WriteAllText(probe, "x");
                 Check("download path resolve",
                     MediaDownloader.ResolvePath(@"C:\NO-SUCH~1\probe song.mp3", work) == probe);
+
+                Check("playlist folder sanitize",
+                    MediaDownloader.SanitizeFolderName("My: Playlist / 2026?") == "My Playlist 2026");
+                Check("playlist folder fallback",
+                    MediaDownloader.SanitizeFolderName(" . ") == "Плейлист");
+                Check("playlist folder reserved",
+                    MediaDownloader.SanitizeFolderName("CON") == "_CON");
+
+                string playlists = Path.Combine(work, "playlists");
+                Directory.CreateDirectory(playlists);
+                string firstFolder = MediaDownloader.MakeCollectionFolder(playlists, "My: Mix");
+                Check("playlist folder name", Path.GetFileName(firstFolder) == "My Mix");
+                Directory.CreateDirectory(firstFolder);
+                File.WriteAllText(Path.Combine(firstFolder, "track.mp3"), "x");
+                string secondFolder = MediaDownloader.MakeCollectionFolder(playlists, "My: Mix");
+                Check("playlist folder unique",
+                    secondFolder != firstFolder &&
+                    Path.GetFileName(secondFolder) == "My Mix (2)");
+                Directory.CreateDirectory(secondFolder);
+                Check("playlist folder reuse empty",
+                    MediaDownloader.MakeCollectionFolder(playlists, "My: Mix") == secondFolder);
+
+                Check("theme seasonal halloween",
+                    Ui.SeasonalTheme(new DateTime(2026, 10, 1)) == ThemeKind.Halloween &&
+                    Ui.SeasonalTheme(new DateTime(2026, 10, 31)) == ThemeKind.Halloween &&
+                    Ui.SeasonalTheme(new DateTime(2026, 11, 1)) == ThemeKind.Halloween &&
+                    Ui.SeasonalTheme(new DateTime(2026, 11, 2)) == ThemeKind.Dark);
+                Check("theme seasonal new year",
+                    Ui.SeasonalTheme(new DateTime(2026, 12, 1)) == ThemeKind.NewYear &&
+                    Ui.SeasonalTheme(new DateTime(2026, 12, 31)) == ThemeKind.NewYear &&
+                    Ui.SeasonalTheme(new DateTime(2027, 1, 1)) == ThemeKind.NewYear &&
+                    Ui.SeasonalTheme(new DateTime(2027, 1, 2)) == ThemeKind.Dark);
+
+                Ui.SetThemeAuto(new DateTime(2026, 10, 15));
+                Check("theme auto halloween",
+                    Ui.AutoTheme && Ui.ThemeName == "halloween");
+                Check("theme auto switches season",
+                    Ui.RefreshAutoTheme(new DateTime(2026, 12, 5)) &&
+                    Ui.ThemeName == "newyear");
+                Ui.SetTheme("light");
+                Check("theme manual overrides auto",
+                    !Ui.AutoTheme && Ui.ThemeName == "light");
 
                 Ui.SetTheme("light");
                 Color lightBg = Ui.Bg;
@@ -393,7 +474,11 @@ namespace Video2Gif
                 {
                     Ui.SetTheme("dark");
                     using (SettingsForm dialog = new SettingsForm(
-                        delegate(string name) { Ui.SetTheme(name); }))
+                        delegate(string name)
+                        {
+                            if (name == "auto") Ui.SetThemeAuto(new DateTime(2026, 10, 15));
+                            else Ui.SetTheme(name);
+                        }))
                     {
                         dialog.StartPosition = FormStartPosition.Manual;
                         dialog.Location = new Point(-4000, -4000);
@@ -403,10 +488,12 @@ namespace Video2Gif
                         Check("settings screenshot",
                             File.Exists(settingsShot) && new FileInfo(settingsShot).Length > 2000);
 
+                        ThemeTile autoTile = GetField(dialog, "autoTile") as ThemeTile;
                         ThemeTile newYearTile = GetField(dialog, "newYearTile") as ThemeTile;
                         ThemeTile halloweenTile = GetField(dialog, "halloweenTile") as ThemeTile;
                         ThemeTile darkTile = GetField(dialog, "darkTile") as ThemeTile;
                         Check("settings theme tiles",
+                            autoTile != null && autoTile.ThemeKey == "auto" &&
                             newYearTile != null && newYearTile.ThemeKey == "newyear" &&
                             halloweenTile != null && halloweenTile.ThemeKey == "halloween" &&
                             darkTile != null && darkTile.Active);
@@ -427,6 +514,12 @@ namespace Video2Gif
                         SaveShot(dialog, halloweenSettings);
                         Check("settings halloween screenshot",
                             File.Exists(halloweenSettings) && new FileInfo(halloweenSettings).Length > 2000);
+
+                        autoTile.Pick();
+                        Application.DoEvents();
+                        Check("settings choose auto",
+                            Ui.AutoTheme && Ui.ThemeName == "halloween" &&
+                            autoTile.Active && !halloweenTile.Active);
 
                         darkTile.Pick();
                         Application.DoEvents();

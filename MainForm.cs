@@ -20,14 +20,27 @@ namespace Video2Gif
         private Converter converter;
         private MemoryStream previewStream;
         private int lastReportTick;
+        private System.Windows.Forms.Timer themeTimer;
 
         public MainForm()
         {
-            Ui.SetTheme(LoadThemeSetting());
+            string setting = LoadThemeSetting();
+            if (setting.Length == 0 || setting == "auto") Ui.SetThemeAuto(DateTime.Now);
+            else Ui.SetTheme(setting);
             BuildUi();
             EnableDrop(this);
             FormClosing += delegate { Shutdown(); };
             UpdateActions();
+
+            // Если программа открыта в ночь смены сезона, тема переключится
+            // сама — без перезапуска.
+            themeTimer = new System.Windows.Forms.Timer();
+            themeTimer.Interval = 60000;
+            themeTimer.Tick += delegate
+            {
+                if (Ui.RefreshAutoTheme(DateTime.Now)) ApplyThemeNow();
+            };
+            themeTimer.Start();
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -53,10 +66,11 @@ namespace Video2Gif
             try
             {
                 string path = SettingsPath;
-                if (!File.Exists(path)) return "dark";
-                return File.ReadAllText(path).Trim().ToLowerInvariant();
+                if (!File.Exists(path)) return "auto";
+                string setting = File.ReadAllText(path).Trim().ToLowerInvariant();
+                return setting.Length == 0 ? "auto" : setting;
             }
-            catch { return "dark"; }
+            catch { return "auto"; }
         }
 
         private void SaveTheme()
@@ -65,7 +79,7 @@ namespace Video2Gif
             {
                 string path = SettingsPath;
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.WriteAllText(path, Ui.ThemeName);
+                File.WriteAllText(path, Ui.AutoTheme ? "auto" : Ui.ThemeName);
             }
             catch { }
         }
@@ -79,7 +93,8 @@ namespace Video2Gif
 
         private void ApplyThemeChoice(string name)
         {
-            Ui.SetTheme(name);
+            if (name == "auto") Ui.SetThemeAuto(DateTime.Now);
+            else Ui.SetTheme(name);
             SaveTheme();
             ApplyThemeNow();
         }
@@ -695,6 +710,12 @@ namespace Video2Gif
 
         private void Shutdown()
         {
+            if (themeTimer != null)
+            {
+                themeTimer.Stop();
+                themeTimer.Dispose();
+                themeTimer = null;
+            }
             if (converter != null) converter.Cancel();
             if (preview != null)
             {

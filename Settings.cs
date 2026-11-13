@@ -124,6 +124,7 @@ namespace Video2Gif
     internal sealed class SettingsForm : Form
     {
         private readonly Action<string> pick;
+        private readonly ThemeTile autoTile;
         private readonly ThemeTile lightTile;
         private readonly ThemeTile darkTile;
         private readonly ThemeTile newYearTile;
@@ -136,7 +137,7 @@ namespace Video2Gif
             Text = "Настройки — " + Program.AppName;
             BackColor = Ui.Bg;
             Font = Ui.Base;
-            ClientSize = new Size(Ui.P(428), Ui.P(300));
+            ClientSize = new Size(Ui.P(428), Ui.P(336));
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -149,11 +150,24 @@ namespace Video2Gif
             Controls.Add(Lbl("Настройки", Ui.H2, Ui.Text, 24, 14, 300, 26));
             Controls.Add(Lbl("Тема оформления", Ui.Small, Ui.Muted, 24, 44, 300, 18));
 
+            autoTile = MakeTile("auto", "Авто");
+            autoTile.SwatchBg = Color.FromArgb(247, 247, 248);
+            autoTile.SwatchCard = Color.FromArgb(14, 14, 15);
+            ThemeKind seasonal = Ui.SeasonalTheme(DateTime.Now);
+            autoTile.SwatchAccent = seasonal == ThemeKind.Halloween
+                ? Color.FromArgb(255, 140, 66)
+                : seasonal == ThemeKind.NewYear
+                    ? Color.FromArgb(126, 200, 255)
+                    : Color.FromArgb(126, 126, 132);
+            autoTile.SetBounds(Ui.P(24), Ui.P(68), Ui.P(120), Ui.P(64));
+            autoTile.Click += delegate { Choose("auto"); };
+            Controls.Add(autoTile);
+
             lightTile = MakeTile("light", "Светлая");
             lightTile.SwatchBg = Color.FromArgb(247, 247, 248);
             lightTile.SwatchCard = Color.White;
             lightTile.SwatchAccent = Color.FromArgb(23, 23, 23);
-            lightTile.SetBounds(Ui.P(24), Ui.P(68), Ui.P(184), Ui.P(64));
+            lightTile.SetBounds(Ui.P(154), Ui.P(68), Ui.P(120), Ui.P(64));
             lightTile.Click += delegate { Choose("light"); };
             Controls.Add(lightTile);
 
@@ -161,7 +175,7 @@ namespace Video2Gif
             darkTile.SwatchBg = Color.FromArgb(14, 14, 15);
             darkTile.SwatchCard = Color.FromArgb(24, 24, 26);
             darkTile.SwatchAccent = Color.FromArgb(242, 242, 243);
-            darkTile.SetBounds(Ui.P(220), Ui.P(68), Ui.P(184), Ui.P(64));
+            darkTile.SetBounds(Ui.P(284), Ui.P(68), Ui.P(120), Ui.P(64));
             darkTile.Click += delegate { Choose("dark"); };
             Controls.Add(darkTile);
 
@@ -181,14 +195,18 @@ namespace Video2Gif
             halloweenTile.Click += delegate { Choose("halloween"); };
             Controls.Add(halloweenTile);
 
+            Controls.Add(Lbl("Авто по дате Windows: Хэллоуин — 1 октября–1 ноября,\n" +
+                "Новый год — 1 декабря–1 января.", Ui.Tiny, Ui.Faint,
+                24, 212, 380, 32));
+
             Controls.Add(Lbl("Тема применяется сразу и запоминается.", Ui.Tiny, Ui.Faint,
-                24, 214, 380, 18));
+                24, 250, 380, 18));
 
             PillButton done = new PillButton();
             done.Accent = true;
             done.Text = "Готово";
             done.Font = Ui.Bold;
-            done.SetBounds(Ui.P(300), Ui.P(246), Ui.P(104), Ui.P(36));
+            done.SetBounds(Ui.P(300), Ui.P(284), Ui.P(104), Ui.P(36));
             done.Click += delegate { Close(); };
             Controls.Add(done);
 
@@ -215,10 +233,11 @@ namespace Video2Gif
         private void RefreshActive()
         {
             string current = Ui.ThemeName;
-            lightTile.Active = current == "light";
-            darkTile.Active = current == "dark";
-            newYearTile.Active = current == "newyear";
-            halloweenTile.Active = current == "halloween";
+            autoTile.Active = Ui.AutoTheme;
+            lightTile.Active = !Ui.AutoTheme && current == "light";
+            darkTile.Active = !Ui.AutoTheme && current == "dark";
+            newYearTile.Active = !Ui.AutoTheme && current == "newyear";
+            halloweenTile.Active = !Ui.AutoTheme && current == "halloween";
         }
 
         private void ApplyTitleBar()

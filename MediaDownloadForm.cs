@@ -382,11 +382,17 @@ namespace Video2Gif
                 return;
             }
 
+            string saved = folder;
+            if (downloader != null && !string.IsNullOrEmpty(downloader.LastFolder))
+            {
+                saved = downloader.LastFolder;
+            }
+
             working = false;
             downloader = null;
             SavedFiles.Clear();
             SavedFiles.AddRange(result);
-            SavedFolder = folder;
+            SavedFolder = saved;
             progressBar.Value = 100;
             progressBar.Visible = false;
             SetBusy(false);

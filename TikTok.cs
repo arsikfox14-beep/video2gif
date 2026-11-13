@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -87,14 +88,38 @@ namespace Video2Gif
                 if (code.Length == 0)
                     throw new TikTokException("В ссылке нет кода видео.");
 
-                string resolved = ResolveShortLink(ShortDomain + code + "/", cookies);
-                postId = FindPostId(new Uri(resolved).AbsolutePath);
-                if (postId == null) postId = MatchShortPostId(resolved);
+                try
+                {
+                    string resolved = ResolveShortLink(ShortDomain + code + "/", cookies);
+                    postId = FindPostId(new Uri(resolved).AbsolutePath);
+                    if (postId == null) postId = MatchShortPostId(resolved);
+                }
+                catch (TikTokException)
+                {
+                    // Не смогли раскрыть короткую ссылку — пусть зеркало
+                    // попробует открыть её само.
+                    return ResolveViaMirrorUrl(raw, null);
+                }
 
                 if (postId == null)
-                    throw new TikTokException("Не удалось разобрать короткую ссылку TikTok.");
+                    return ResolveViaMirrorUrl(raw, null);
             }
 
+            // Сначала страница TikTok напрямую: там всегда свежие данные.
+            // Если IP заблокирован или TikTok не отдал ролик (WAF, регион),
+            // пробуем зеркало — оно отдаёт готовую ссылку на mp4.
+            try
+            {
+                return ResolveFromPage(postId, cookies);
+            }
+            catch (TikTokException)
+            {
+                return ResolveViaMirror(postId);
+            }
+        }
+
+        private static TikTokInfo ResolveFromPage(string postId, CookieContainer cookies)
+        {
             string page = FetchPage("https://www.tiktok.com/@i/video/" + postId, cookies);
 
             Dictionary<string, object> root = ParseJson(ExtractUniversalData(page));
@@ -153,6 +178,140 @@ namespace Video2Gif
             info.SuggestedName = "tiktok_" + info.Author + "_" + postId + ".mp4";
             info.CookieHeader = cookies.GetCookieHeader(new Uri("https://www.tiktok.com/"));
             return info;
+        }
+
+        private static TikTokInfo ResolveViaMirror(string postId)
+        {
+            return ResolveViaMirrorUrl("https://www.tiktok.com/@i/video/" + postId, postId);
+        }
+
+        private static TikTokInfo ResolveViaMirrorUrl(string target, string postId)
+        {
+            string url = "https://www.tikwm.com/api/?url=" + Uri.EscapeDataString(target) + "&hd=1";
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.UserAgent = UserAgent;
+            request.Accept = "application/json,text/plain,*/*";
+            request.Timeout = 30000;
+            request.ReadWriteTimeout = 30000;
+            request.KeepAlive = false;
+
+            string json;
+            try
+            {
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if ((int)response.StatusCode != 200)
+                        throw new TikTokException("Зеркало TikTok ответило кодом " + (int)response.StatusCode + ".");
+                    json = ReadText(response);
+                }
+            }
+            catch (WebException ex)
+            {
+                throw FriendlyNetworkError(ex, "ролик через зеркало TikTok");
+            }
+
+            return ParseMirrorJson(json, postId);
+        }
+
+        internal static TikTokInfo ParseMirrorJson(string json, string postId)
+        {
+            Dictionary<string, object> root = ParseJson(json);
+            int code = Int(root, "code");
+            if (code != 0)
+            {
+                string message = Str(root, "msg");
+                string lower = (message ?? "").ToLowerInvariant();
+                if (lower.Contains("delete") ||
+                    lower.Contains("not found") ||
+                    lower.Contains("unavailable") ||
+                    lower.Contains("url parsing") ||
+                    lower.Contains("failed"))
+                {
+                    throw new TikTokException(
+                        "Видео TikTok недоступно: возможно, оно удалено или ссылка неверна.");
+                }
+                if (!string.IsNullOrEmpty(message) &&
+                    message.IndexOf("success", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    throw new TikTokException("TikTok недоступен: " + message);
+                }
+                throw new TikTokException("TikTok недоступен (код " + code + ").");
+            }
+
+            Dictionary<string, object> data = Obj(root, "data");
+            if (data == null) throw new TikTokException("Зеркало TikTok не вернуло данные ролика.");
+
+            string id = Str(data, "id");
+            if (string.IsNullOrEmpty(id)) id = postId;
+            if (string.IsNullOrEmpty(id)) id = "video";
+
+            string uniqueId = Str(Obj(data, "author"), "unique_id");
+            if (string.IsNullOrEmpty(uniqueId)) uniqueId = "tiktok";
+
+            TikTokInfo info = new TikTokInfo();
+            info.PostId = id;
+            info.Author = SafeName(uniqueId);
+            info.Description = Str(data, "title") ?? "";
+
+            object[] images = Arr(data, "images");
+            if (images != null && images.Length > 0)
+            {
+                info.PhotoUrls = MirrorImages(images);
+                if (info.PhotoUrls.Count > 0)
+                {
+                    info.IsPhotoPost = true;
+                    info.SuggestedName = "tiktok_" + info.Author + "_" + id;
+                    return info;
+                }
+            }
+
+            string videoUrl = Str(data, "hdplay");
+            if (string.IsNullOrEmpty(videoUrl)) videoUrl = Str(data, "play");
+            if (string.IsNullOrEmpty(videoUrl)) videoUrl = Str(data, "wmplay");
+            videoUrl = AbsoluteCdnUrl(videoUrl);
+            if (string.IsNullOrEmpty(videoUrl))
+                throw new TikTokException("Зеркало TikTok не вернуло ссылку на видео.");
+
+            info.VideoUrl = videoUrl;
+            info.SuggestedName = "tiktok_" + info.Author + "_" + id + ".mp4";
+            return info;
+        }
+
+        private static List<string> MirrorImages(object[] images)
+        {
+            List<string> result = new List<string>();
+            for (int i = 0; i < images.Length; i++)
+            {
+                string url = images[i] as string;
+                if (string.IsNullOrEmpty(url))
+                {
+                    Dictionary<string, object> image = images[i] as Dictionary<string, object>;
+                    url = Str(image, "url");
+                    if (string.IsNullOrEmpty(url)) url = Str(image, "imageURL");
+                    if (string.IsNullOrEmpty(url)) url = Str(image, "display_image");
+                }
+                url = AbsoluteCdnUrl(url);
+                if (!string.IsNullOrEmpty(url)) result.Add(url);
+            }
+            return result;
+        }
+
+        private static string AbsoluteCdnUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+            if (url.StartsWith("//", StringComparison.Ordinal)) return "https:" + url;
+            if (url.StartsWith("/", StringComparison.Ordinal)) return "https://www.tikwm.com" + url;
+            return url;
+        }
+
+        private static int Int(Dictionary<string, object> parent, string key)
+        {
+            if (parent == null) return 0;
+            object value;
+            if (!parent.TryGetValue(key, out value) || value == null) return 0;
+            try { return Convert.ToInt32(value, CultureInfo.InvariantCulture); }
+            catch { return 0; }
         }
 
         private static string ResolveShortLink(string url, CookieContainer cookies)

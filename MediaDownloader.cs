@@ -22,6 +22,12 @@ namespace Video2Gif
         }
     }
 
+    internal sealed class SpotifySelection
+    {
+        public List<MediaTrack> Tracks = new List<MediaTrack>();
+        public string CollectionName = "";
+    }
+
     internal static class SpotifyLinks
     {
         private static readonly Regex WebLink = new Regex(
@@ -51,13 +57,23 @@ namespace Video2Gif
 
         public static List<MediaTrack> Resolve(string url, Action<int, string> report)
         {
+            return ResolveSelection(url, report).Tracks;
+        }
+
+        public static SpotifySelection ResolveSelection(string url, Action<int, string> report)
+        {
             string embed = BuildEmbedUrl(url);
             report(-1, "Получаем данные из Spotify…");
             string html = Fetch(embed);
-            return ParseHtml(html);
+            return ParseSelection(html);
         }
 
         internal static List<MediaTrack> ParseHtml(string html)
+        {
+            return ParseSelection(html).Tracks;
+        }
+
+        internal static SpotifySelection ParseSelection(string html)
         {
             Dictionary<string, object> entity = FindEntity(html);
             if (entity == null)
@@ -65,10 +81,24 @@ namespace Video2Gif
                 throw new ConversionException("Не удалось прочитать ссылку Spotify.");
             }
 
-            List<MediaTrack> tracks = new List<MediaTrack>();
+            SpotifySelection selection = new SpotifySelection();
+            List<MediaTrack> tracks = selection.Tracks;
             HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             object[] list = Get(entity, "trackList") as object[];
+            string type = Str(Get(entity, "type")).Trim();
+            bool collection = list != null ||
+                string.Equals(type, "playlist", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(type, "album", StringComparison.OrdinalIgnoreCase);
+
+            if (collection)
+            {
+                // Для альбома или плейлиста все файлы складываем в отдельную
+                // папку с названием подборки.
+                selection.CollectionName = Str(Get(entity, "name")).Trim();
+                if (selection.CollectionName.Length == 0) selection.CollectionName = "Плейлист Spotify";
+            }
+
             if (list != null && list.Length > 0)
             {
                 for (int i = 0; i < list.Length; i++)
@@ -98,7 +128,7 @@ namespace Video2Gif
             {
                 throw new ConversionException("В ссылке Spotify не нашлось доступных треков.");
             }
-            return tracks;
+            return selection;
         }
 
         private static bool Playable(Dictionary<string, object> item)
@@ -274,6 +304,13 @@ namespace Video2Gif
         private readonly List<string> files = new List<string>();
         private Process active;
         private volatile bool cancelled;
+        private string lastFolder = "";
+
+        /// <summary>Папка, куда реально легли файлы (для плейлиста — подпапка).</summary>
+        public string LastFolder
+        {
+            get { lock (gate) { return lastFolder; } }
+        }
 
         public void Cancel()
         {
@@ -299,16 +336,23 @@ namespace Video2Gif
             string folder, Action<int, string> report)
         {
             cancelled = false;
-            lock (gate) { files.Clear(); }
+            lock (gate)
+            {
+                files.Clear();
+                lastFolder = folder;
+            }
 
             report(-1, "Готовим загрузчик…");
             YtDlpBundle.Ensure();
             Directory.CreateDirectory(folder);
 
             List<MediaTrack> tracks;
+            string collectionName = "";
             if (spotify)
             {
-                tracks = SpotifyLinks.Resolve(url, report);
+                SpotifySelection selection = SpotifyLinks.ResolveSelection(url, report);
+                tracks = selection.Tracks;
+                collectionName = selection.CollectionName;
             }
             else
             {
@@ -316,6 +360,21 @@ namespace Video2Gif
                 MediaTrack single = new MediaTrack();
                 single.Title = audio ? "Музыка" : "Видео";
                 tracks.Add(single);
+
+                // Плейлист отличается от обычного видео: yt-dlp отдаёт для
+                // него название подборки. Тогда создаём отдельную папку.
+                collectionName = ProbePlaylistTitle(url);
+            }
+
+            string targetFolder = folder;
+            if (!string.IsNullOrEmpty(collectionName))
+            {
+                targetFolder = MakeCollectionFolder(folder, collectionName);
+                Directory.CreateDirectory(targetFolder);
+                lock (gate) { lastFolder = targetFolder; }
+
+                string name = Path.GetFileName(targetFolder);
+                report(-1, "Плейлист: " + name);
             }
 
             int total = tracks.Count;
@@ -355,7 +414,7 @@ namespace Video2Gif
 
                 try
                 {
-                    RunOne(target, audio, audioFormat, folder, delegate(int percent)
+                    RunOne(target, audio, audioFormat, targetFolder, delegate(int percent)
                     {
                         int overall = total > 1
                             ? (int)Math.Round((index + percent / 100.0) * 100.0 / total)
@@ -478,6 +537,133 @@ namespace Video2Gif
                 if (valid) return line;
             }
             return null;
+        }
+
+        private string ProbePlaylistTitle(string url)
+        {
+            StringBuilder args = new StringBuilder();
+            Add(args, "--ignore-config");
+            Add(args, "--no-warnings");
+            Add(args, "--color", "never");
+            Add(args, "--simulate");
+            Add(args, "--flat-playlist");
+            Add(args, "--no-playlist");
+            Add(args, "--playlist-end", "1");
+            Add(args, "--print", "%(playlist_title)s");
+            Add(args, url);
+
+            ProcessStartInfo psi = new ProcessStartInfo(YtDlpBundle.Path, args.ToString());
+            psi.UseShellExecute = false;
+            psi.CreateNoWindow = true;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.StandardOutputEncoding = Encoding.UTF8;
+            psi.StandardErrorEncoding = Encoding.UTF8;
+
+            StringBuilder output = new StringBuilder();
+            using (Process process = new Process())
+            {
+                process.StartInfo = psi;
+                process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e)
+                {
+                    if (e.Data != null) output.AppendLine(e.Data.Trim());
+                };
+                process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { };
+
+                lock (gate) { active = process; }
+                try
+                {
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    if (!process.WaitForExit(40000))
+                    {
+                        try { process.Kill(); } catch { }
+                        return "";
+                    }
+                    process.WaitForExit();
+                }
+                catch
+                {
+                    return "";
+                }
+                finally
+                {
+                    lock (gate) { active = null; }
+                }
+            }
+
+            if (cancelled) return "";
+
+            string[] lines = output.ToString().Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (line.Length == 0) continue;
+                if (line == "NA" || line == "N/A" || line == "None") return "";
+                return line;
+            }
+            return "";
+        }
+
+        internal static string MakeCollectionFolder(string parent, string name)
+        {
+            string baseName = SanitizeFolderName(name);
+            string candidate = Path.Combine(parent, baseName);
+            if (!Directory.Exists(candidate) || IsEmptyFolder(candidate)) return candidate;
+
+            for (int i = 2; i < 1000; i++)
+            {
+                candidate = Path.Combine(parent, baseName + " (" + i.ToString(CultureInfo.InvariantCulture) + ")");
+                if (!Directory.Exists(candidate) || IsEmptyFolder(candidate)) return candidate;
+            }
+
+            return Path.Combine(parent, baseName + " (" +
+                Guid.NewGuid().ToString("N").Substring(0, 6) + ")");
+        }
+
+        internal static string SanitizeFolderName(string name)
+        {
+            string value = (name ?? "").Trim();
+            char[] invalid = Path.GetInvalidFileNameChars();
+            StringBuilder clean = new StringBuilder(value.Length);
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                bool bad = false;
+                for (int j = 0; j < invalid.Length; j++)
+                {
+                    if (c == invalid[j]) { bad = true; break; }
+                }
+                clean.Append(bad ? ' ' : c);
+            }
+
+            value = Regex.Replace(clean.ToString(), @"\s+", " ").Trim();
+            value = value.Trim(' ', '.', '-');
+            if (value.Length > 80) value = value.Substring(0, 80).TrimEnd(' ', '.', '-');
+            if (value.Length > 0 && IsReservedName(value)) value = "_" + value;
+            return value.Length > 0 ? value : "Плейлист";
+        }
+
+        private static bool IsReservedName(string name)
+        {
+            int dot = name.IndexOf('.');
+            string bare = (dot >= 0 ? name.Substring(0, dot) : name).Trim().ToUpperInvariant();
+            if (bare == "CON" || bare == "PRN" || bare == "AUX" || bare == "NUL") return true;
+            if (bare.Length == 4 &&
+                (bare.StartsWith("COM", StringComparison.Ordinal) ||
+                 bare.StartsWith("LPT", StringComparison.Ordinal)) &&
+                bare[3] >= '1' && bare[3] <= '9')
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private static bool IsEmptyFolder(string path)
+        {
+            try { return Directory.GetFileSystemEntries(path).Length == 0; }
+            catch { return false; }
         }
 
         internal static string DurationFilter(MediaTrack track)
